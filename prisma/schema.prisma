@@ -1,0 +1,132 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BAND
+  VENUE
+  ADMIN
+}
+
+enum GigStatus {
+  OPEN
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum ClaimMode {
+  AUTO_ASSIGN
+  VENUE_REVIEW
+}
+
+enum ClaimStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  band  Band?
+  venue Venue?
+}
+
+model Band {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  genre           String
+  bio             String  @default("")
+  stripeAccountId String?
+  studiosyncId    String? @unique // StudioSync Band UUID, set when created via webhook
+
+  availability Availability[]
+  claims       GigClaim[]
+}
+
+model Venue {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  address  String
+  capacity Int
+
+  gigs Gig[]
+}
+
+model PayTier {
+  id                 String   @id @default(cuid())
+  name               String
+  amount             Int // in cents
+  platformFeePercent Float    @default(0.0)
+  createdAt          DateTime @default(now())
+
+  gigs Gig[]
+}
+
+model Gig {
+  id          String    @id @default(cuid())
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  payTierId   String
+  payTier     PayTier   @relation(fields: [payTierId], references: [id])
+  date        DateTime
+  status      GigStatus @default(OPEN)
+  claimMode   ClaimMode @default(VENUE_REVIEW)
+  description String    @default("")
+  createdAt   DateTime  @default(now())
+
+  claims  GigClaim[]
+  payment Payment?
+}
+
+model Availability {
+  id             String    @id @default(cuid())
+  bandId         String
+  band           Band      @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  month          String // "YYYY-MM"
+  availableDates Int[] // day numbers [1, 5, 12, 20]
+  lockedAt       DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([bandId, month])
+}
+
+model GigClaim {
+  id        String      @id @default(cuid())
+  gigId     String
+  gig       Gig         @relation(fields: [gigId], references: [id])
+  bandId    String
+  band      Band        @relation(fields: [bandId], references: [id])
+  status    ClaimStatus @default(PENDING)
+  claimedAt DateTime    @default(now())
+
+  @@unique([gigId, bandId])
+}
+
+model Payment {
+  id                    String    @id @default(cuid())
+  gigId                 String    @unique
+  gig                   Gig       @relation(fields: [gigId], references: [id])
+  stripePaymentIntentId String?
+  amount                Int // in cents
+  platformFee           Int       @default(0)
+  releasedAt            DateTime?
+  createdAt             DateTime  @default(now())
+}
