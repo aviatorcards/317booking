@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justReset = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +36,11 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-sm">
+      {justReset && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+          Password updated — sign in with your new password.
+        </div>
+      )}
       <div className="card">
         <h1 className="text-xl font-bold mb-6">Welcome back</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -63,6 +70,11 @@ export default function LoginPage() {
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
+          <div className="text-center">
+            <Link href="/forgot-password" className="text-xs text-gray-400 hover:text-indigo-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
         </form>
       </div>
       <p className="text-center text-sm text-gray-500 mt-4">
@@ -72,5 +84,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-sm card h-64 animate-pulse bg-gray-50" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

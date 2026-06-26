@@ -56,7 +56,11 @@ export default async function AdminBandsPage() {
 
               return (
                 <tr key={band.id} className="hover:bg-gray-50">
-                  <td className="py-3 pr-4 font-medium">{band.name}</td>
+                  <td className="py-3 pr-4 font-medium">
+                    <Link href={`/bands/${band.id}`} className="text-brand-500 hover:underline">
+                      {band.name}
+                    </Link>
+                  </td>
                   <td className="py-3 pr-4 text-gray-600">{band.genre}</td>
                   <td className="py-3 pr-4 text-gray-600">{band.user.email}</td>
                   <td className="py-3 pr-4 text-center">

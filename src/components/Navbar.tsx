@@ -8,8 +8,14 @@ export function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
-  // Hide navbar on auth pages
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) return null;
+  // Auth pages and dashboard sections have their own layouts
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/band/") ||
+    pathname.startsWith("/venue/") ||
+    pathname.startsWith("/admin/")
+  ) return null;
 
   const role = session?.user?.role;
 
@@ -34,12 +40,18 @@ export function Navbar() {
                   <Link href="/gigs" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
                     Browse Gigs
                   </Link>
+                  <Link href="/venues" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
+                    Browse Venues
+                  </Link>
                 </>
               )}
               {role === "VENUE" && (
                 <>
                   <Link href="/venue/dashboard" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
                     Dashboard
+                  </Link>
+                  <Link href="/bands" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
+                    Browse Bands
                   </Link>
                   <Link href="/venue/gigs/new" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
                     Post a Gig

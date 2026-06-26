@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyStudioSync } from "@/lib/studiosync";
+import { sendGigClaimedEmail } from "@/lib/email";
+
+// DELETE /api/gigs/[id]/claim — band withdraws a pending claim
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getSession();
+  if (!session || session.user.role !== "BAND") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const band = await prisma.band.findUnique({ where: { userId: session.user.id } });
+  if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });
+
+  const claim = await prisma.gigClaim.findUnique({
+    where: { gigId_bandId: { gigId: params.id, bandId: band.id } },
+  });
+  if (!claim) return NextResponse.json({ error: "Claim not found" }, { status: 404 });
+  if (claim.status !== "PENDING") {
+    return NextResponse.json(
+      { error: "Only pending claims can be withdrawn" },
+      { status: 409 }
+    );
+  }
+
+  await prisma.gigClaim.delete({
+    where: { gigId_bandId: { gigId: params.id, bandId: band.id } },
+  });
+
+  // If no other pending claims remain, revert gig to OPEN
+  const remainingPending = await prisma.gigClaim.count({
+    where: { gigId: params.id, status: "PENDING" },
+  });
+  if (remainingPending === 0) {
+    await prisma.gig.update({
+      where: { id: params.id },
+      data: { status: "OPEN" },
+    });
+  }
+
+  return NextResponse.json({ ok: true });
+}
 
 // POST /api/gigs/[id]/claim
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,7 +55,10 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
-    include: { claims: true },
+    include: {
+      claims: true,
+      venue: { include: { user: { select: { email: true } } } },
+    },
   });
   if (!gig) return NextResponse.json({ error: "Gig not found" }, { status: 404 });
   if (gig.status !== "OPEN") {
@@ -51,6 +95,21 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         data: { status: "CONFIRMED" },
       }),
     ]);
+
+    if (band.studiosyncId) {
+      void notifyStudioSync({
+        event: "gig.confirmed",
+        gig: {
+          id: gig.id,
+          date: gig.date.toISOString(),
+          studiosync_band_id: band.studiosyncId,
+          venue_name: gig.venue.name,
+          venue_address: gig.venue.address,
+          description: gig.description,
+        },
+      });
+    }
+
     return NextResponse.json(claim, { status: 201 });
   }
 
@@ -61,6 +120,15 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (gig.status === "OPEN") {
     await prisma.gig.update({ where: { id: gig.id }, data: { status: "PENDING" } });
   }
+
+  void sendGigClaimedEmail({
+    to: gig.venue.user.email,
+    venueName: gig.venue.name,
+    bandName: band.name,
+    bandGenre: band.genre,
+    gigDate: gig.date,
+    gigId: gig.id,
+  });
 
   return NextResponse.json(claim, { status: 201 });
 }

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ExportRecords } from "@/components/ExportRecords";
 
 export default async function VenueDashboard() {
   const session = await getSession();
@@ -133,6 +134,8 @@ export default async function VenueDashboard() {
           </div>
         )}
       </div>
+
+      <ExportRecords endpoint="/api/venues/me/export" />
     </div>
   );
 }

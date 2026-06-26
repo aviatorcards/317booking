@@ -6,6 +6,18 @@ import { StatusBadge } from "@/components/StatusBadge";
 
 export const revalidate = 60;
 
+function getMonthOptions() {
+  const options: { label: string; value: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    options.push({ label, value });
+  }
+  return options;
+}
+
 export default async function GigsPage({
   searchParams,
 }: {
@@ -48,9 +60,11 @@ export default async function GigsPage({
     return availMap[month]?.includes(day) ?? false;
   }
 
+  const monthOptions = getMonthOptions();
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Open Gigs</h1>
           <p className="text-sm text-gray-500 mt-1">Indianapolis · All venues</p>
@@ -60,6 +74,33 @@ export default async function GigsPage({
             Update Availability
           </Link>
         )}
+      </div>
+
+      {/* Month filter */}
+      <div className="flex gap-2 mb-8 flex-wrap">
+        <Link
+          href="/gigs"
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            !month
+              ? "bg-indigo-600 text-white border-indigo-600"
+              : "bg-white text-gray-600 border-gray-200 hover:border-indigo-400"
+          }`}
+        >
+          All upcoming
+        </Link>
+        {monthOptions.map((opt) => (
+          <Link
+            key={opt.value}
+            href={`/gigs?month=${opt.value}`}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              month === opt.value
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-400"
+            }`}
+          >
+            {opt.label}
+          </Link>
+        ))}
       </div>
 
       {gigs.length === 0 ? (

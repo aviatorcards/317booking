@@ -43,6 +43,8 @@ model User {
 
   band  Band?
   venue Venue?
+
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Band {
@@ -57,6 +59,7 @@ model Band {
 
   availability Availability[]
   claims       GigClaim[]
+  ratings      GigRating[]
 }
 
 model Venue {
@@ -67,7 +70,8 @@ model Venue {
   address  String
   capacity Int
 
-  gigs Gig[]
+  gigs    Gig[]
+  ratings GigRating[]
 }
 
 model PayTier {
@@ -83,7 +87,7 @@ model PayTier {
 model Gig {
   id          String    @id @default(cuid())
   venueId     String
-  venue       Venue     @relation(fields: [venueId], references: [id])
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
   payTierId   String
   payTier     PayTier   @relation(fields: [payTierId], references: [id])
   date        DateTime
@@ -94,6 +98,7 @@ model Gig {
 
   claims  GigClaim[]
   payment Payment?
+  rating  GigRating?
 }
 
 model Availability {
@@ -120,6 +125,19 @@ model GigClaim {
   @@unique([gigId, bandId])
 }
 
+model GigRating {
+  id        String   @id @default(cuid())
+  gigId     String   @unique
+  gig       Gig      @relation(fields: [gigId], references: [id])
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  bandId    String
+  band      Band     @relation(fields: [bandId], references: [id])
+  rating    Int
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
 model Payment {
   id                    String    @id @default(cuid())
   gigId                 String    @unique
@@ -129,4 +147,42 @@ model Payment {
   platformFee           Int       @default(0)
   releasedAt            DateTime?
   createdAt             DateTime  @default(now())
+}
+
+model WebhookOutbox {
+  id            String    @id @default(cuid())
+  url           String
+  payload       Json
+  status        String    @default("PENDING") // PENDING | DELIVERED | FAILED
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  deliveredAt   DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([status, nextAttemptAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  event     String
+  actorId   String?  // userId of whoever triggered it; null for webhook/system events
+  gigId     String?  // plain string — no FK so records survive gig deletion
+  bandId    String?  // plain string — no FK so records survive band deletion
+  venueId   String?  // plain string — no FK so records survive venue deletion
+  meta      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
 }

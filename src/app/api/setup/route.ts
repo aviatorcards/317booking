@@ -8,16 +8,13 @@ const schema = z.object({
   password: z.string().min(8),
 });
 
-/**
- * POST /api/setup
- *
- * One-time bootstrap: creates the first ADMIN user.
- * Returns 409 if any admin already exists — effectively locks itself after first use.
- * Remove or gate this route once your admin account is created.
- */
+export async function GET() {
+  const adminExists = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+  return NextResponse.json({ completed: !!adminExists });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    // Lock after first admin is created
     const existingAdmin = await prisma.user.findFirst({
       where: { role: "ADMIN" },
     });

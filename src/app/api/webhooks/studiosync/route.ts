@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { sendPasswordResetEmail } from "@/lib/email";
 
 const schema = z.object({
   event: z.enum(["band.created", "band.updated"]),
@@ -92,12 +93,22 @@ export async function POST(req: NextRequest) {
       include: { band: true },
     });
 
-    return NextResponse.json(
-      {
-        ok: true,
-        bandId: user.band!.id,
-        message: "Band registered. Send the band a password reset link so they can log in.",
+    const appUrl = process.env.NEXTAUTH_URL ?? "";
+    const icalUrl = appUrl ? `${appUrl}/api/bands/${user.band!.id}/calendar.ics` : null;
+
+    // Send the band a password-set email so they can log in
+    const resetToken = randomBytes(32).toString("hex");
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        token: resetToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days for first-time setup
       },
+    });
+    void sendPasswordResetEmail({ to: bandData.billing_email, name: bandData.name, token: resetToken, isNewAccount: true });
+
+    return NextResponse.json(
+      { ok: true, bandId: user.band!.id, icalUrl },
       { status: 201 }
     );
   }

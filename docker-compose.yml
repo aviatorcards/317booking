@@ -1,8 +1,9 @@
 services:
   app:
     build: .
+    image: 317booking-app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@db:5432/317booking
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
@@ -10,9 +11,36 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      STUDIOSYNC_URL: http://studiosync-backend-1:8000
+      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-549257cb76493ed622b5c8e537034ce71cfe6b1f08a3c1dc4044ef81513a6ab7}
+    networks:
+      - default
+      - booking-shared
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  webhook-worker:
+    image: 317booking-app
+    command: ["node", "scripts/drain-outbox.js"]
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@db:5432/317booking
+      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-549257cb76493ed622b5c8e537034ce71cfe6b1f08a3c1dc4044ef81513a6ab7}
+    networks:
+      - default
+      - booking-shared
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
     restart: unless-stopped
 
   db:
@@ -29,6 +57,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+networks:
+  default:
+  booking-shared:
+    external: true
 
 volumes:
   postgres_data:

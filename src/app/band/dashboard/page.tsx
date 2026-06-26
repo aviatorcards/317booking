@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
 import { StatusBadge } from "@/components/StatusBadge";
+import { WithdrawClaimButton } from "../WithdrawClaimButton";
+import { ExportRecords } from "@/components/ExportRecords";
 
 export default async function BandDashboard() {
   const session = await getSession();
@@ -15,7 +17,7 @@ export default async function BandDashboard() {
       claims: {
         include: {
           gig: {
-            include: { venue: { select: { name: true } }, payTier: true },
+            include: { venue: { select: { id: true, name: true } }, payTier: true },
           },
         },
         orderBy: { claimedAt: "desc" },
@@ -68,7 +70,9 @@ export default async function BandDashboard() {
             {upcomingGigs.map((claim) => (
               <div key={claim.id} className="card flex items-center justify-between">
                 <div>
-                  <div className="font-medium">{claim.gig.venue.name}</div>
+                  <Link href={`/venues/${claim.gig.venue.id}`} className="font-bold text-brand-900 hover:text-brand-500 transition-colors">
+                    {claim.gig.venue.name}
+                  </Link>
                   <div className="text-sm text-gray-500">
                     {new Date(claim.gig.date).toLocaleDateString("en-US", {
                       weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -97,7 +101,9 @@ export default async function BandDashboard() {
             {band.claims.map((claim) => (
               <div key={claim.id} className="card flex items-center justify-between">
                 <div>
-                  <div className="font-medium">{claim.gig.venue.name}</div>
+                  <Link href={`/venues/${claim.gig.venue.id}`} className="font-bold text-brand-900 hover:text-brand-500 transition-colors">
+                    {claim.gig.venue.name}
+                  </Link>
                   <div className="text-sm text-gray-500">
                     {new Date(claim.gig.date).toLocaleDateString("en-US", {
                       month: "short", day: "numeric", year: "numeric",
@@ -107,12 +113,17 @@ export default async function BandDashboard() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-700">{formatAmount(claim.gig.payTier.amount)}</span>
                   <StatusBadge status={claim.status} />
+                  {claim.status === "PENDING" && (
+                    <WithdrawClaimButton gigId={claim.gig.id} />
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <ExportRecords endpoint="/api/bands/me/export" />
     </div>
   );
 }

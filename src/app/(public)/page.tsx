@@ -10,7 +10,7 @@ export default function Home() {
           <span className="text-indigo-600">No middlemen.</span>
         </h1>
         <p className="text-xl text-gray-500 max-w-xl mx-auto mb-10">
-          317 Booking connects Indianapolis venues with bands directly — transparent pay scales, no bookers taking your cut.
+          317 Booking connects Indianapolis venues with bands directly - transparent pay scales, no bookers taking your cut.
         </p>
         <div className="flex gap-4 justify-center">
           <Link href="/register?role=VENUE" className="btn-primary text-base px-6 py-3">
@@ -18,6 +18,15 @@ export default function Home() {
           </Link>
           <Link href="/register?role=BAND" className="btn-secondary text-base px-6 py-3">
             I&apos;m a Band
+          </Link>
+        </div>
+        <div className="flex gap-3 justify-center mt-4 text-sm font-semibold text-brand-500">
+          <Link href="/bands" className="hover:text-brand-600 transition-colors">
+            Browse Artists →
+          </Link>
+          <span className="text-brand-200">|</span>
+          <Link href="/venues" className="hover:text-brand-600 transition-colors">
+            Browse Venues →
           </Link>
         </div>
       </section>

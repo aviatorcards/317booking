@@ -1,9 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ClaimButton } from "./ClaimButton";
+import { WithdrawClaimButton } from "@/app/band/WithdrawClaimButton";
+import { ConfirmBandButton } from "@/app/venue/gigs/[id]/ConfirmBandButton";
 
 export default async function GigDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession();
@@ -14,7 +17,14 @@ export default async function GigDetailPage({ params }: { params: { id: string }
       venue: true,
       payTier: true,
       claims: {
-        include: { band: { select: { id: true, name: true, genre: true, bio: true } } },
+        include: {
+          band: {
+            select: {
+              id: true, name: true, genre: true, bio: true,
+              ratings: { select: { rating: true } },
+            },
+          },
+        },
         orderBy: { claimedAt: "asc" },
       },
     },
@@ -23,15 +33,16 @@ export default async function GigDetailPage({ params }: { params: { id: string }
   if (!gig) notFound();
 
   // Check if current band already claimed
-  let bandId: string | null = null;
   let alreadyClaimed = false;
+  let hasPendingClaim = false;
   let isAvailable = false;
 
   if (session?.user.role === "BAND") {
     const band = await prisma.band.findUnique({ where: { userId: session.user.id } });
     if (band) {
-      bandId = band.id;
-      alreadyClaimed = gig.claims.some((c) => c.bandId === band.id);
+      const myClaim = gig.claims.find((c) => c.bandId === band.id);
+      alreadyClaimed = !!myClaim;
+      hasPendingClaim = myClaim?.status === "PENDING";
       const month = gig.date.toISOString().slice(0, 7);
       const day = gig.date.getUTCDate();
       const avail = await prisma.availability.findUnique({
@@ -53,7 +64,9 @@ export default async function GigDetailPage({ params }: { params: { id: string }
       <div className="card mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold">{gig.venue.name}</h1>
+            <Link href={`/venues/${gig.venueId}`} className="hover:text-brand-500 transition-colors">
+              <h1 className="text-2xl font-bold">{gig.venue.name}</h1>
+            </Link>
             <p className="text-gray-500 text-sm">{gig.venue.address}</p>
           </div>
           <StatusBadge status={gig.status} />
@@ -91,10 +104,15 @@ export default async function GigDetailPage({ params }: { params: { id: string }
       </div>
 
       {/* Band: claim section */}
-      {session?.user.role === "BAND" && gig.status === "OPEN" && (
+      {session?.user.role === "BAND" && (gig.status === "OPEN" || hasPendingClaim) && (
         <div className="card mb-6">
           <h2 className="font-semibold mb-3">Claim this gig</h2>
-          {alreadyClaimed ? (
+          {hasPendingClaim ? (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">Your claim is pending venue review.</p>
+              <WithdrawClaimButton gigId={gig.id} />
+            </div>
+          ) : alreadyClaimed ? (
             <p className="text-sm text-gray-500">You&apos;ve already claimed this gig.</p>
           ) : !isAvailable ? (
             <div>
@@ -116,27 +134,39 @@ export default async function GigDetailPage({ params }: { params: { id: string }
         <div className="card">
           <h2 className="font-semibold mb-4">Claimants ({gig.claims.length})</h2>
           <div className="space-y-3">
-            {gig.claims.map((claim) => (
-              <div key={claim.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="font-medium">{claim.band.name}</div>
-                  <div className="text-xs text-gray-500">{claim.band.genre}</div>
-                  {claim.band.bio && (
-                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{claim.band.bio}</div>
-                  )}
+            {gig.claims.map((claim) => {
+              const bandRatings = claim.band.ratings;
+              const avg = bandRatings.length > 0
+                ? bandRatings.reduce((s, r) => s + r.rating, 0) / bandRatings.length
+                : null;
+              return (
+                <div key={claim.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/bands/${claim.bandId}`} className="font-medium hover:text-brand-500 transition-colors">
+                        {claim.band.name}
+                      </Link>
+                      {avg !== null && (
+                        <span className="text-xs text-amber-500 font-medium">
+                          {"★".repeat(Math.round(avg))} {avg.toFixed(1)}
+                          <span className="text-gray-400 font-normal ml-0.5">({bandRatings.length})</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">{claim.band.genre}</div>
+                    {claim.band.bio && (
+                      <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{claim.band.bio}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={claim.status} />
+                    {claim.status === "PENDING" && gig.status !== "CONFIRMED" && (
+                      <ConfirmBandButton gigId={gig.id} bandId={claim.bandId} bandName={claim.band.name} />
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={claim.status} />
-                  {claim.status === "PENDING" && gig.status !== "CONFIRMED" && (
-                    <form action={`/api/gigs/${gig.id}/confirm/${claim.bandId}`} method="POST">
-                      <button type="submit" className="btn-primary text-xs px-3 py-1.5">
-                        Confirm
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

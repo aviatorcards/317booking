@@ -43,7 +43,11 @@ export default async function AdminVenuesPage() {
 
               return (
                 <tr key={venue.id} className="hover:bg-gray-50">
-                  <td className="py-3 pr-4 font-medium">{venue.name}</td>
+                  <td className="py-3 pr-4 font-medium">
+                    <Link href={`/venues/${venue.id}`} className="text-brand-500 hover:underline">
+                      {venue.name}
+                    </Link>
+                  </td>
                   <td className="py-3 pr-4 text-gray-600">{venue.address}</td>
                   <td className="py-3 pr-4 text-gray-600">{venue.user.email}</td>
                   <td className="py-3 pr-4 text-center text-gray-600">{venue.capacity.toLocaleString()}</td>
