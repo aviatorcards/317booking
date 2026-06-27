@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate a random initial password — band must reset via email
-    const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const tempPassword = randomBytes(24).toString("base64url");
     const passwordHash = await hash(tempPassword, 12);
 
     const user = await prisma.user.create({

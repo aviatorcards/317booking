@@ -23,6 +23,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json();
 
+  if (body.status !== undefined && body.status !== "CANCELLED") {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
   if (body.status === "CANCELLED") {
     const confirmedClaim = await prisma.gigClaim.findFirst({
       where: { gigId: params.id, status: "CONFIRMED" },

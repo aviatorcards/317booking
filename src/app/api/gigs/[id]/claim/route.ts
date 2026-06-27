@@ -84,17 +84,23 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   });
   if (existing) return NextResponse.json({ error: "Already claimed" }, { status: 409 });
 
-  // Auto-assign: first claim confirms immediately
+  // Auto-assign: first claim confirms immediately.
+  // Use updateMany as a CAS so concurrent requests can't both win.
   if (gig.claimMode === "AUTO_ASSIGN") {
-    const [claim] = await prisma.$transaction([
-      prisma.gigClaim.create({
-        data: { gigId: gig.id, bandId: band.id, status: "CONFIRMED" },
-      }),
-      prisma.gig.update({
-        where: { id: gig.id },
+    const claim = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.gig.updateMany({
+        where: { id: gig.id, status: "OPEN" },
         data: { status: "CONFIRMED" },
-      }),
-    ]);
+      });
+      if (count === 0) return null;
+      return tx.gigClaim.create({
+        data: { gigId: gig.id, bandId: band.id, status: "CONFIRMED" },
+      });
+    });
+
+    if (!claim) {
+      return NextResponse.json({ error: "Gig is not open for claims" }, { status: 409 });
+    }
 
     if (band.studiosyncId) {
       void notifyStudioSync({

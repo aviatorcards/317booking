@@ -19,7 +19,7 @@ export function NewGigClient({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: new Date(values.date).toISOString(),
+        date: `${values.date}:00.000Z`,
         payTierId: values.payTierId,
         description: values.description,
         claimMode: values.claimMode,
