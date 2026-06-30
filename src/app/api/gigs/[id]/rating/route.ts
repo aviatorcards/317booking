@@ -15,18 +15,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
-  if (!venue) return NextResponse.json({ error: "Venue not found" }, { status: 404 });
-
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
     include: {
+      venue: { select: { id: true, userId: true } },
       claims: { where: { status: "CONFIRMED" }, select: { bandId: true } },
     },
   });
 
   if (!gig) return NextResponse.json({ error: "Gig not found" }, { status: 404 });
-  if (gig.venueId !== venue.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (gig.venue.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const venue = gig.venue;
   if (gig.status !== "COMPLETED") {
     return NextResponse.json({ error: "Can only rate completed gigs" }, { status: 400 });
   }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { DeleteUserButton } from "../users/DeleteUserButton";
 
 export default async function AdminBandsPage() {
   const session = await getSession();
@@ -12,7 +13,7 @@ export default async function AdminBandsPage() {
   const bands = await prisma.band.findMany({
     orderBy: { name: "asc" },
     include: {
-      user: { select: { email: true, createdAt: true } },
+      user: { select: { id: true, email: true, createdAt: true } },
       claims: {
         include: { gig: { select: { status: true } } },
       },
@@ -41,7 +42,8 @@ export default async function AdminBandsPage() {
               <th className="pb-3 pr-4 font-medium text-center">Total Claims</th>
               <th className="pb-3 pr-4 font-medium text-center">{currentMonth} Availability</th>
               <th className="pb-3 pr-4 font-medium text-center">Stripe</th>
-              <th className="pb-3 font-medium">Joined</th>
+              <th className="pb-3 pr-4 font-medium">Joined</th>
+              <th className="pb-3 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -81,8 +83,11 @@ export default async function AdminBandsPage() {
                       <span className="inline-block bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">None</span>
                     )}
                   </td>
-                  <td className="py-3 text-gray-500">
+                  <td className="py-3 pr-4 text-gray-500">
                     {new Date(band.user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="py-3 text-right">
+                    <DeleteUserButton userId={band.user.id} userEmail={band.user.email} />
                   </td>
                 </tr>
               );

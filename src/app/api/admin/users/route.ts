@@ -21,7 +21,7 @@ export async function GET() {
       role: true,
       createdAt: true,
       band: { select: { name: true } },
-      venue: { select: { name: true } },
+      venues: { select: { name: true }, take: 1 },
     },
   });
 

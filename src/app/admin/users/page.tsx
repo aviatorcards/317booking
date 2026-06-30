@@ -15,7 +15,7 @@ export default async function AdminUsersPage() {
       role: true,
       createdAt: true,
       band: { select: { name: true } },
-      venue: { select: { name: true } },
+      venues: { select: { name: true }, take: 1 },
     },
   });
 
@@ -42,7 +42,7 @@ export default async function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {users.map((user) => {
-              const displayName = user.band?.name ?? user.venue?.name ?? "—";
+              const displayName = user.band?.name ?? user.venues?.[0]?.name ?? "—";
               const isSelf = user.id === session.user.id;
 
               return (

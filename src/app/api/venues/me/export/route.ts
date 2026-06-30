@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 import { formatAmount } from "@/lib/stripe";
 import { toCSV, toXLSX } from "@/lib/export";
 import { renderPDF } from "@/lib/pdf";
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const format = searchParams.get("format") ?? "csv";
   const month = searchParams.get("month");
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
+  const venue = await getActiveVenue(session.user.id);
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const dateFilter = month

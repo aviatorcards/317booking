@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { DeleteUserButton } from "../users/DeleteUserButton";
 
 export default async function AdminVenuesPage() {
   const session = await getSession();
@@ -10,7 +11,7 @@ export default async function AdminVenuesPage() {
   const venues = await prisma.venue.findMany({
     orderBy: { name: "asc" },
     include: {
-      user: { select: { email: true, createdAt: true } },
+      user: { select: { id: true, email: true, createdAt: true } },
       gigs: { select: { status: true } },
     },
   });
@@ -34,7 +35,8 @@ export default async function AdminVenuesPage() {
               <th className="pb-3 pr-4 font-medium text-center">Confirmed</th>
               <th className="pb-3 pr-4 font-medium text-center">Completed</th>
               <th className="pb-3 pr-4 font-medium text-center">Cancelled</th>
-              <th className="pb-3 font-medium">Joined</th>
+              <th className="pb-3 pr-4 font-medium">Joined</th>
+              <th className="pb-3 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -71,8 +73,11 @@ export default async function AdminVenuesPage() {
                       {byStatus("CANCELLED")}
                     </span>
                   </td>
-                  <td className="py-3 text-gray-500">
+                  <td className="py-3 pr-4 text-gray-500">
                     {new Date(venue.user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </td>
+                  <td className="py-3 text-right">
+                    <DeleteUserButton userId={venue.user.id} userEmail={venue.user.email} />
                   </td>
                 </tr>
               );

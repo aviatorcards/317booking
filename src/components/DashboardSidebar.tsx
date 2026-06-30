@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import React from "react";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,44 @@ function SignOutIcon() {
   );
 }
 
+function ChevronIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function ServerIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+      <line x1="6" y1="6" x2="6.01" y2="6" />
+      <line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+  );
+}
+
 // ── Nav definitions ───────────────────────────────────────────────────────────
 
 const BAND_NAV = [
@@ -149,7 +188,69 @@ const ADMIN_NAV = [
   { href: "/admin/tiers", label: "Pay Tiers", icon: <TagIcon /> },
   { href: "/admin/audit", label: "Audit Log", icon: <ShieldIcon /> },
   { href: "/admin/settings", label: "Settings", icon: <SettingsIcon /> },
+  { href: "/admin/technical", label: "Technical", icon: <ServerIcon /> },
 ];
+
+// ── Venue switcher ────────────────────────────────────────────────────────────
+
+interface VenueEntry { id: string; name: string }
+
+function VenueSwitcher({ venues, activeVenueId, onNavigate }: { venues: VenueEntry[]; activeVenueId?: string; onNavigate: () => void }) {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const active = venues.find((v) => v.id === activeVenueId) ?? venues[0];
+
+  async function switchTo(id: string) {
+    setOpen(false);
+    await fetch("/api/venues/switch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ venueId: id }),
+    });
+    router.refresh();
+  }
+
+  if (venues.length === 0) return null;
+
+  return (
+    <div className="px-3 mb-2 relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-brand-50 border border-brand-100 text-sm font-semibold text-brand-900 hover:border-brand-300 transition-colors"
+      >
+        <span className="truncate">{active?.name ?? "Select venue"}</span>
+        <span className="shrink-0 text-brand-300"><ChevronIcon /></span>
+      </button>
+
+      {open && (
+        <div className="absolute left-3 right-3 top-full mt-1 bg-white border border-brand-200 rounded-xl shadow-lg z-50 overflow-hidden">
+          {venues.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => switchTo(v.id)}
+              className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                v.id === activeVenueId
+                  ? "bg-brand-500 text-white"
+                  : "text-brand-900 hover:bg-brand-50"
+              }`}
+            >
+              {v.name}
+            </button>
+          ))}
+          <div className="border-t border-brand-100">
+            <Link
+              href="/venue/venues/new"
+              onClick={() => { setOpen(false); onNavigate(); }}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-brand-400 hover:bg-brand-50 transition-colors"
+            >
+              <PlusIcon /> Add venue
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -157,11 +258,19 @@ interface Props {
   role: "BAND" | "VENUE" | "ADMIN";
   userName: string;
   userEmail: string;
+  venues?: VenueEntry[];
+  activeVenueId?: string;
 }
 
-export function DashboardSidebar({ role, userName, userEmail }: Props) {
+export function DashboardSidebar({ role, userName, userEmail, venues, activeVenueId }: Props) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   const navItems = role === "BAND" ? BAND_NAV : role === "VENUE" ? VENUE_NAV : ADMIN_NAV;
+
+  // Close drawer on route change
+  React.useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   function isActive(item: { href: string; exact?: boolean }) {
     if (item.exact) return pathname === item.href;
@@ -169,54 +278,102 @@ export function DashboardSidebar({ role, userName, userEmail }: Props) {
   }
 
   return (
-    <aside className="w-64 shrink-0 flex flex-col h-screen sticky top-0 bg-white border-r border-brand-200">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-brand-100">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-lg font-bold font-heading text-brand-500 tracking-tight">317 Booking</span>
+    <>
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-white border-b border-brand-200 flex items-center justify-between px-4">
+        <Link href="/" className="font-bold font-heading text-brand-500 text-lg tracking-tight">
+          317 Booking
         </Link>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map((item) => {
-          const active = isActive(item);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                active
-                  ? "bg-brand-500 text-white shadow-sm"
-                  : "text-brand-400 hover:bg-brand-50 hover:text-brand-900"
-              }`}
-            >
-              <span className={active ? "opacity-100" : "opacity-60"}>{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* User */}
-      <div className="px-4 py-4 border-t border-brand-100">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-500 font-bold text-sm shrink-0">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-brand-900 truncate">{userName}</div>
-            <div className="text-xs text-brand-300 truncate">{userEmail}</div>
-          </div>
-        </div>
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium text-brand-400 hover:bg-brand-50 hover:text-brand-900 transition-colors"
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-lg text-brand-400 hover:bg-brand-50 transition-colors"
+          aria-label="Open menu"
         >
-          <SignOutIcon />
-          Sign out
+          <MenuIcon />
         </button>
       </div>
-    </aside>
+
+      {/* Backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black/40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={[
+          "w-64 flex flex-col bg-white border-r border-brand-200 h-screen",
+          "fixed top-0 left-0 bottom-0 z-50",
+          "transition-transform duration-300 ease-in-out",
+          "lg:sticky lg:top-0 lg:bottom-auto lg:z-auto lg:translate-x-0 lg:shrink-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-brand-100 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-lg font-bold font-heading text-brand-500 tracking-tight">317 Booking</span>
+          </Link>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-1 rounded-lg text-brand-300 hover:bg-brand-50 transition-colors"
+            aria-label="Close menu"
+          >
+            <XIcon />
+          </button>
+        </div>
+
+        {/* Venue switcher */}
+        {role === "VENUE" && venues && venues.length > 0 && (
+          <div className="px-0 pt-3">
+            <VenueSwitcher venues={venues} activeVenueId={activeVenueId} onNavigate={() => setMobileOpen(false)} />
+          </div>
+        )}
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const active = isActive(item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-brand-400 hover:bg-brand-50 hover:text-brand-900"
+                }`}
+              >
+                <span className={active ? "opacity-100" : "opacity-60"}>{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User */}
+        <div className="px-4 py-4 border-t border-brand-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-500 font-bold text-sm shrink-0">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-brand-900 truncate">{userName}</div>
+              <div className="text-xs text-brand-300 truncate">{userEmail}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => signOut({ callbackUrl: window.location.origin + "/" })}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium text-brand-400 hover:bg-brand-50 hover:text-brand-900 transition-colors"
+          >
+            <SignOutIcon />
+            Sign out
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

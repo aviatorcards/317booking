@@ -13,10 +13,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
   const gig = await prisma.gig.findUnique({
     where: { id: params.gigId },
     include: {
+      venue: { select: { id: true, name: true, userId: true } },
       payTier: true,
       payment: true,
       claims: {
@@ -26,9 +26,10 @@ export async function POST(
     },
   });
 
-  if (!gig || !venue || gig.venueId !== venue.id) {
+  if (!gig || gig.venue.userId !== session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  const venue = gig.venue;
   if (gig.status !== "CONFIRMED") {
     return NextResponse.json({ error: "Gig must be confirmed before payment" }, { status: 409 });
   }
@@ -41,12 +42,21 @@ export async function POST(
     return NextResponse.json({ error: "No confirmed band found" }, { status: 409 });
   }
 
+  if (!confirmedBand.stripeAccountId) {
+    return NextResponse.json(
+      { error: "Band has not connected a Stripe account yet" },
+      { status: 409 }
+    );
+  }
+
   const origin = req.headers.get("origin") ?? process.env.NEXTAUTH_URL ?? "";
   const gigDate = gig.date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+
+  const platformFee = Math.round(gig.payTier.amount * (gig.payTier.platformFeePercent / 100));
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -64,9 +74,12 @@ export async function POST(
       },
     ],
     payment_intent_data: {
+      application_fee_amount: platformFee,
+      transfer_data: { destination: confirmedBand.stripeAccountId },
       metadata: {
         gigId: gig.id,
         bandId: confirmedBand.id,
+        platformFee: String(platformFee),
       },
     },
     metadata: { gigId: gig.id },

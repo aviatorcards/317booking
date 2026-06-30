@@ -53,11 +53,8 @@ export default async function GigDetailPage({ params }: { params: { id: string }
   }
 
   // Is this venue's gig?
-  let isOwner = false;
-  if (session?.user.role === "VENUE") {
-    const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
-    isOwner = venue?.id === gig.venueId;
-  }
+  const isOwner =
+    session?.user.role === "VENUE" && gig.venue.userId === session.user.id;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -140,7 +137,7 @@ export default async function GigDetailPage({ params }: { params: { id: string }
                 ? bandRatings.reduce((s, r) => s + r.rating, 0) / bandRatings.length
                 : null;
               return (
-                <div key={claim.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={claim.id} className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
                   <div>
                     <div className="flex items-center gap-2">
                       <Link href={`/bands/${claim.bandId}`} className="font-medium hover:text-brand-500 transition-colors">

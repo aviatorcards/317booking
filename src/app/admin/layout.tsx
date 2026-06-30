@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         userName="Admin"
         userEmail={session.user.email ?? ""}
       />
-      <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+      <main className="flex-1 min-w-0 overflow-auto pt-14 lg:pt-0">{children}</main>
     </div>
   );
 }

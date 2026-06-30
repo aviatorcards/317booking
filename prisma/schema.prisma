@@ -41,8 +41,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  band  Band?
-  venue Venue?
+  band   Band?
+  venues Venue[]
 
   passwordResetTokens PasswordResetToken[]
 }
@@ -64,11 +64,12 @@ model Band {
 
 model Venue {
   id       String @id @default(cuid())
-  userId   String @unique
+  userId   String
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   name     String
   address  String
   capacity Int
+  logoUrl  String?
 
   gigs    Gig[]
   ratings GigRating[]
@@ -185,4 +186,11 @@ model AuditLog {
 
   @@index([event])
   @@index([createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }

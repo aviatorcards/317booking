@@ -52,3 +52,33 @@ export function signPayload(body: string): Record<string, string> {
   }
   return headers;
 }
+
+/**
+ * Headers for direct REST API calls to StudioSync (non-webhook).
+ * Uses the API key generated in StudioSync Settings > API Keys.
+ * Set STUDIOSYNC_API_KEY in .env to the generated ss_<key> value.
+ */
+export function studioSyncAuthHeaders(): Record<string, string> {
+  const apiKey = process.env.STUDIOSYNC_API_KEY;
+  if (!apiKey) return {};
+  return { Authorization: `Bearer ${apiKey}` };
+}
+
+/**
+ * Fetch a resource from the StudioSync REST API, authenticated via API key.
+ */
+export async function studioSyncFetch(
+  path: string,
+  init?: RequestInit
+): Promise<Response> {
+  const base = process.env.STUDIOSYNC_URL;
+  if (!base) throw new Error("STUDIOSYNC_URL is not set");
+  return fetch(`${base}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...studioSyncAuthHeaders(),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
+}

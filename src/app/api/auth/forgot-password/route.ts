@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },
-    include: { band: true, venue: true },
+    include: { band: true, venues: { take: 1 } },
   });
 
   // Always return 200 to avoid leaking which emails are registered
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const name = user.band?.name ?? user.venue?.name ?? user.email;
+  const name = user.band?.name ?? user.venues?.[0]?.name ?? user.email;
   void sendPasswordResetEmail({ to: user.email, name, token });
 
   return NextResponse.json({ ok: true });

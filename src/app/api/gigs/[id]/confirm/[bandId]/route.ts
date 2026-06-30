@@ -15,11 +15,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
     include: {
-      venue: { select: { name: true, address: true } },
+      venue: { select: { id: true, name: true, address: true, userId: true } },
       payTier: { select: { amount: true } },
       _count: { select: { claims: true } },
       claims: {
@@ -28,9 +27,10 @@ export async function POST(
     },
   });
 
-  if (!gig || !venue || gig.venueId !== venue.id || !gig.venue) {
+  if (!gig || gig.venue.userId !== session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  const venue = gig.venue;
   if (gig.status !== "PENDING" && gig.status !== "OPEN") {
     return NextResponse.json({ error: "Gig cannot be confirmed" }, { status: 409 });
   }

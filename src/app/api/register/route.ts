@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
           email: data.email,
           passwordHash,
           role: "VENUE",
-          venue: {
+          venues: {
             create: {
               name: data.name,
               address: data.address,

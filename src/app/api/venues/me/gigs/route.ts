@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 
 // GET /api/venues/me/gigs?status=OPEN&upcoming=true
 export async function GET(req: NextRequest) {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
+  const venue = await getActiveVenue(session.user.id);
   if (!venue) return NextResponse.json({ error: "Venue not found" }, { status: 404 });
 
   const { searchParams } = req.nextUrl;

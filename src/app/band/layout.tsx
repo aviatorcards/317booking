@@ -19,7 +19,7 @@ export default async function BandLayout({ children }: { children: React.ReactNo
         userName={band?.name ?? "My Band"}
         userEmail={session.user.email ?? ""}
       />
-      <main className="flex-1 min-w-0 overflow-auto">{children}</main>
+      <main className="flex-1 min-w-0 overflow-auto pt-14 lg:pt-0">{children}</main>
     </div>
   );
 }

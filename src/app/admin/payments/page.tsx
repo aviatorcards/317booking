@@ -36,7 +36,7 @@ export default async function AdminPaymentsPage() {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="card text-center">
           <div className="text-2xl font-bold text-gray-800">{payments.length}</div>
           <div className="text-sm text-gray-500 mt-1">Total Payments</div>

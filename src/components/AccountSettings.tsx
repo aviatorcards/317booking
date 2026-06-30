@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { signOut } from "next-auth/react";
+import { ExportRecords } from "@/components/ExportRecords";
 
-export function AccountSettings() {
+interface Props {
+  exportEndpoint?: string;
+}
+
+export function AccountSettings({ exportEndpoint }: Props) {
   const [currentEmail, setCurrentEmail] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -13,6 +19,11 @@ export function AccountSettings() {
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/user/settings")
@@ -65,6 +76,24 @@ export function AccountSettings() {
       setPwMsg({ ok: false, text: data.error ?? "Failed to update password" });
     }
     setPwSaving(false);
+  }
+
+  async function handleDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleteError(null);
+    setDeleting(true);
+    const res = await fetch("/api/user/me", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: deletePassword }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      await signOut({ callbackUrl: "/" });
+    } else {
+      setDeleteError(data.error ?? "Failed to delete account");
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -183,6 +212,64 @@ export function AccountSettings() {
           )}
         </div>
       </form>
+
+      {/* Data export */}
+      {exportEndpoint && <ExportRecords endpoint={exportEndpoint} />}
+
+      {/* Danger zone */}
+      <div className="border border-red-200 rounded-2xl p-6 space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-red-700">Delete account</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Permanently deletes your account and all associated data. This cannot be undone.
+            {exportEndpoint && " Export your records above before proceeding."}
+          </p>
+        </div>
+
+        {!deleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+          >
+            I want to delete my account
+          </button>
+        ) : (
+          <form onSubmit={handleDeleteAccount} className="space-y-4">
+            <div>
+              <label className="label">Confirm your password to delete</label>
+              <input
+                type="password"
+                className="input border-red-300 focus:ring-red-400"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Your current password"
+                required
+                autoFocus
+              />
+            </div>
+            {deleteError && (
+              <p className="text-sm text-red-600">{deleteError}</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={deleting || !deletePassword}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Deleting…" : "Delete my account"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirm(false); setDeletePassword(""); setDeleteError(null); }}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

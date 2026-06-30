@@ -30,15 +30,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
-    include: { payTier: true },
+    include: { payTier: true, venue: { select: { id: true, name: true, userId: true } } },
   });
 
-  if (!gig || !venue || gig.venueId !== venue.id) {
+  if (!gig || gig.venue.userId !== session.user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  const venue = gig.venue;
 
   const body = await req.json();
 

@@ -51,9 +51,15 @@ export default async function VenueDetailPage({
         <div className="lg:col-span-1 space-y-6">
           <div className="card bg-white border border-brand-200">
             <div className="text-center pb-6 border-b border-brand-100">
-              <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center text-brand-500 font-bold text-3xl mx-auto mb-4 border-2 border-brand-200">
-                🏟
-              </div>
+              {venue.logoUrl ? (
+                <div className="w-24 h-24 mx-auto mb-4 border-2 border-brand-200 rounded-full overflow-hidden bg-white shadow-sm flex items-center justify-center">
+                  <img src={venue.logoUrl} alt={`${venue.name} logo`} className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center text-brand-500 font-bold text-3xl mx-auto mb-4 border-2 border-brand-200">
+                  🏟
+                </div>
+              )}
               <h1 className="text-2xl font-bold text-brand-900 font-heading tracking-tight">
                 {venue.name}
               </h1>

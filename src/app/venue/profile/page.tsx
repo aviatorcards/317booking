@@ -6,10 +6,39 @@ export default function VenueProfilePage() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError("");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setLogoUrl(data.url);
+      } else {
+        setError(data.error ?? "Upload failed");
+      }
+    } catch (err) {
+      setError("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/venues/me/profile")
@@ -18,6 +47,7 @@ export default function VenueProfilePage() {
         setName(data.name ?? "");
         setAddress(data.address ?? "");
         setCapacity(String(data.capacity ?? ""));
+        setLogoUrl(data.logoUrl ?? "");
         setLoading(false);
       });
   }, []);
@@ -31,7 +61,7 @@ export default function VenueProfilePage() {
     const res = await fetch("/api/venues/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, address, capacity: Number(capacity) }),
+      body: JSON.stringify({ name, address, capacity: Number(capacity), logoUrl }),
     });
 
     if (!res.ok) {
@@ -106,6 +136,37 @@ export default function VenueProfilePage() {
             <p className="text-xs text-brand-300 mt-1.5">
               Maximum number of attendees for your venue.
             </p>
+          </div>
+
+          <div>
+            <label className="label">Logo Image</label>
+            <div className="flex gap-4 items-center">
+              {logoUrl && (
+                <div className="w-16 h-16 border rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
+                  <img src={logoUrl} alt="Logo preview" className="w-full h-full object-contain" />
+                </div>
+              )}
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 mb-3"
+                />
+                <input
+                  type="url"
+                  className="input"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="Or paste an image URL here..."
+                />
+                {uploading && <p className="text-xs text-brand-500 mt-1 font-medium">Uploading image...</p>}
+                <p className="text-xs text-brand-300 mt-1.5">
+                  Upload an image file or provide a direct link to your venue's logo.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -17,7 +17,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     where: { id: params.id },
     include: {
       band: { select: { id: true, name: true } },
-      venue: { select: { id: true, name: true } },
+      venues: { select: { id: true, name: true }, take: 1 },
     },
   });
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -31,11 +31,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     event: "user.deleted",
     actorId: session.user.id,
     bandId: target.band?.id,
-    venueId: target.venue?.id,
+    venueId: target.venues?.[0]?.id,
     meta: {
       email: target.email,
       role: target.role,
-      entityName: target.band?.name ?? target.venue?.name ?? null,
+      entityName: target.band?.name ?? target.venues?.[0]?.name ?? null,
       accountCreatedAt: target.createdAt.toISOString(),
     },
   });

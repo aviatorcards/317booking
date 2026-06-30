@@ -13,10 +13,10 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
   const session = await getSession();
   if (!session || session.user.role !== "VENUE") redirect("/login");
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
     include: {
+      venue: { select: { userId: true } },
       payTier: true,
       payment: true,
       rating: true,
@@ -25,6 +25,7 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
           band: {
             select: {
               id: true, name: true, genre: true, bio: true,
+              stripeAccountId: true,
               ratings: { select: { rating: true } },
             },
           },
@@ -34,7 +35,7 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
     },
   });
 
-  if (!gig || !venue || gig.venueId !== venue.id) notFound();
+  if (!gig || gig.venue.userId !== session.user.id) notFound();
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -92,9 +93,16 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
                 </span>
                 <span className="text-sm text-gray-500">{formatAmount(gig.payment.amount)}</span>
               </div>
-            ) : (
-              <PayGigButton gigId={gig.id} />
-            )}
+            ) : (() => {
+              const confirmedBand = gig.claims.find((c) => c.status === "CONFIRMED")?.band;
+              return confirmedBand && !confirmedBand.stripeAccountId ? (
+                <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  Payment is unavailable — the band hasn&apos;t connected their Stripe account yet.
+                </p>
+              ) : (
+                <PayGigButton gigId={gig.id} />
+              );
+            })()}
           </div>
         )}
 

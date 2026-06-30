@@ -123,7 +123,9 @@ export default async function BandDashboard() {
         )}
       </div>
 
-      <ExportRecords endpoint="/api/bands/me/export" />
+      <div className="mt-6">
+        <ExportRecords endpoint="/api/bands/me/export" />
+      </div>
     </div>
   );
 }

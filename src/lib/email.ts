@@ -11,21 +11,34 @@ import { PasswordResetEmail } from "@/emails/PasswordResetEmail";
 import { formatAmount } from "@/lib/stripe";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-const FROM = process.env.EMAIL_FROM ?? "317 Booking <noreply@317booking.com>";
+import { prisma } from "@/lib/prisma";
 
-let _transporter: nodemailer.Transporter | null = null;
+async function getTransporterConfig() {
+  const settings = await prisma.systemSetting.findMany({
+    where: { key: { in: ["SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "EMAIL_FROM"] } }
+  });
+  const map = new Map(settings.map((s: any) => [s.key, s.value]));
+  
+  return {
+    host: map.get("SMTP_HOST") || process.env.SMTP_HOST,
+    port: Number(map.get("SMTP_PORT") || process.env.SMTP_PORT || 587),
+    secure: (map.get("SMTP_SECURE") || process.env.SMTP_SECURE) === "true",
+    user: map.get("SMTP_USER") || process.env.SMTP_USER,
+    pass: map.get("SMTP_PASS") || process.env.SMTP_PASS || "",
+    from: map.get("EMAIL_FROM") || process.env.EMAIL_FROM || "317 Booking <noreply@317booking.com>",
+  };
+}
 
-function getTransporter() {
-  if (!process.env.SMTP_HOST) return null;
-  return (_transporter ??= nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth:
-      process.env.SMTP_USER
-        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS ?? "" }
-        : undefined,
-  }));
+async function getTransporter() {
+  const conf = await getTransporterConfig();
+  if (!conf.host) return null;
+  
+  return nodemailer.createTransport({
+    host: conf.host as string,
+    port: conf.port as number,
+    secure: conf.secure as boolean,
+    auth: conf.user ? { user: conf.user as string, pass: conf.pass as string } : undefined,
+  } as any);
 }
 
 function gigDateStr(date: Date) {
@@ -38,13 +51,14 @@ function gigDateStr(date: Date) {
 }
 
 async function send(to: string, subject: string, element: React.ReactElement) {
-  const transporter = getTransporter();
+  const transporter = await getTransporter();
+  const conf = await getTransporterConfig();
   if (!transporter) {
     console.warn("Email not sent — SMTP_HOST is not configured");
     return;
   }
   const html = await render(element);
-  await transporter.sendMail({ from: FROM, to, subject, html });
+  await transporter.sendMail({ from: conf.from as string, to, subject, html });
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

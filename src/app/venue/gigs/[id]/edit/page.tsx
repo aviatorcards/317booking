@@ -8,13 +8,15 @@ export default async function EditGigPage({ params }: { params: { id: string } }
   const session = await getSession();
   if (!session || session.user.role !== "VENUE") redirect("/login");
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
   const gig = await prisma.gig.findUnique({
     where: { id: params.id },
-    include: { _count: { select: { claims: true } } },
+    include: {
+      venue: { select: { userId: true } },
+      _count: { select: { claims: true } },
+    },
   });
 
-  if (!gig || !venue || gig.venueId !== venue.id) notFound();
+  if (!gig || gig.venue.userId !== session.user.id) notFound();
 
   // Can't edit completed or cancelled gigs
   if (gig.status === "COMPLETED" || gig.status === "CANCELLED") {

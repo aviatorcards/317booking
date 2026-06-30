@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isMonthLocked } from "@/lib/availability";
 
 // GET /api/availability?month=YYYY-MM
 export async function GET(req: NextRequest) {
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     month,
     availableDates: avail?.availableDates ?? [],
-    locked: isMonthLocked(month),
+    locked: false,
   });
 }
 
@@ -44,10 +43,6 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { month, availableDates } = schema.parse(body);
-
-  if (isMonthLocked(month)) {
-    return NextResponse.json({ error: "Availability for this month is locked" }, { status: 403 });
-  }
 
   const band = await prisma.band.findUnique({ where: { userId: session.user.id } });
   if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });

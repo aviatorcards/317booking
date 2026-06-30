@@ -12,7 +12,7 @@ export default function BandSettingsPage() {
       <Suspense fallback={<div className="card h-20 animate-pulse bg-brand-50" />}>
         <StripeConnectSection />
       </Suspense>
-      <AccountSettings />
+      <AccountSettings exportEndpoint="/api/bands/me/export" />
     </div>
   );
 }

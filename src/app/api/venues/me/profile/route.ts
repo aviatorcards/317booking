@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 
 export async function GET() {
   const session = await getSession();
@@ -8,11 +8,14 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const venue = await prisma.venue.findUnique({
-    where: { userId: session.user.id },
-    select: { id: true, name: true, address: true, capacity: true },
-  });
-
+  const venue = await getActiveVenue(session.user.id);
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(venue);
+
+  return NextResponse.json({
+    id: venue.id,
+    name: venue.name,
+    address: venue.address,
+    capacity: venue.capacity,
+    logoUrl: venue.logoUrl,
+  });
 }

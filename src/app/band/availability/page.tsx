@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { editableMonths, daysInMonth, isMonthLocked } from "@/lib/availability";
+import { editableMonths, daysInMonth } from "@/lib/availability";
 
 export default function AvailabilityPage() {
   const months = editableMonths();
   const [selectedMonth, setSelectedMonth] = useState(months[0] ?? "");
   const [availableDates, setAvailableDates] = useState<number[]>([]);
-  const [locked, setLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -15,7 +14,6 @@ export default function AvailabilityPage() {
     const res = await fetch(`/api/availability?month=${month}`);
     const data = await res.json();
     setAvailableDates(data.availableDates ?? []);
-    setLocked(data.locked ?? isMonthLocked(month));
     setSaved(false);
   }, []);
 
@@ -24,7 +22,6 @@ export default function AvailabilityPage() {
   }, [selectedMonth, loadMonth]);
 
   function toggleDay(day: number) {
-    if (locked) return;
     setAvailableDates((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
@@ -44,7 +41,6 @@ export default function AvailabilityPage() {
 
   const totalDays = selectedMonth ? daysInMonth(selectedMonth) : 31;
   const [year, mon] = selectedMonth ? selectedMonth.split("-").map(Number) : [0, 0];
-  // Day of week the month starts on (0=Sun)
   const startDay = selectedMonth ? new Date(year, mon - 1, 1).getDay() : 0;
 
   function monthLabel(m: string) {
@@ -56,7 +52,7 @@ export default function AvailabilityPage() {
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold mb-2">Set Availability</h1>
       <p className="text-gray-500 text-sm mb-6">
-        Mark the days you&apos;re available to play. Locks on the 25th of the prior month.
+        Mark the days you&apos;re available to play. You can update this at any time.
       </p>
 
       {/* Month selector */}
@@ -74,19 +70,10 @@ export default function AvailabilityPage() {
             {monthLabel(m)}
           </button>
         ))}
-        {months.length === 0 && (
-          <p className="text-gray-400 text-sm">No editable months right now.</p>
-        )}
       </div>
 
       {selectedMonth && (
         <>
-          {locked && (
-            <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              Availability for this month is locked.
-            </div>
-          )}
-
           {/* Calendar grid */}
           <div className="card">
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -95,7 +82,6 @@ export default function AvailabilityPage() {
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
-              {/* Empty cells before month start */}
               {Array.from({ length: startDay }).map((_, i) => (
                 <div key={`empty-${i}`} />
               ))}
@@ -105,12 +91,9 @@ export default function AvailabilityPage() {
                   <button
                     key={day}
                     onClick={() => toggleDay(day)}
-                    disabled={locked}
                     className={`aspect-square rounded-lg text-sm font-medium transition-colors ${
                       isAvailable
                         ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                        : locked
-                        ? "bg-gray-50 text-gray-400 cursor-not-allowed"
                         : "bg-gray-100 text-gray-700 hover:bg-indigo-100"
                     }`}
                   >
@@ -122,11 +105,9 @@ export default function AvailabilityPage() {
           </div>
 
           <div className="mt-4 flex items-center gap-4">
-            {!locked && (
-              <button onClick={save} disabled={saving} className="btn-primary">
-                {saving ? "Saving…" : "Save availability"}
-              </button>
-            )}
+            <button onClick={save} disabled={saving} className="btn-primary">
+              {saving ? "Saving…" : "Save availability"}
+            </button>
             {saved && <span className="text-sm text-green-600">Saved!</span>}
             <span className="text-sm text-gray-400">{availableDates.length} days selected</span>
           </div>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 import { NewGigClient } from "./NewGigClient";
 
 export default async function NewGigPage({
@@ -16,7 +17,7 @@ export default async function NewGigPage({
   // Pre-fill from an existing gig if ?from= is provided
   let sourceGig: { date: Date; payTierId: string; description: string; claimMode: "VENUE_REVIEW" | "AUTO_ASSIGN" } | null = null;
   if (searchParams.from) {
-    const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
+    const venue = await getActiveVenue(session.user.id);
     if (venue) {
       const gig = await prisma.gig.findFirst({
         where: { id: searchParams.from, venueId: venue.id },

@@ -72,7 +72,7 @@ async function main() {
       create: { id: v.userId, email: v.email, passwordHash: pw, role: "VENUE" },
     });
     await prisma.venue.upsert({
-      where: { userId: user.id },
+      where: { id: v.venueId },
       update: {},
       create: { id: v.venueId, userId: user.id, name: v.name, address: v.address, capacity: v.capacity },
     });

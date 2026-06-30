@@ -24,16 +24,8 @@ export async function POST(req: NextRequest) {
     case "payment_intent.succeeded": {
       const pi = event.data.object;
       const gigId = pi.metadata?.gigId;
-      const bandId = pi.metadata?.bandId;
+      const platformFee = pi.metadata?.platformFee ? parseInt(pi.metadata.platformFee, 10) : 0;
       if (gigId) {
-        const gig = await prisma.gig.findUnique({
-          where: { id: gigId },
-          include: { payTier: true },
-        });
-        const platformFee = gig
-          ? Math.round(pi.amount * (gig.payTier.platformFeePercent / 100))
-          : 0;
-
         await prisma.payment.upsert({
           where: { gigId },
           create: { gigId, stripePaymentIntentId: pi.id, amount: pi.amount, platformFee },
@@ -44,24 +36,6 @@ export async function POST(req: NextRequest) {
           gigId,
           meta: { stripePaymentIntentId: pi.id, amount: pi.amount, platformFee },
         });
-
-        // Transfer payout to band's Stripe Connect account
-        if (bandId) {
-          const band = await prisma.band.findUnique({ where: { id: bandId } });
-          if (band?.stripeAccountId) {
-            const payoutAmount = pi.amount - platformFee;
-            try {
-              await stripe.transfers.create({
-                amount: payoutAmount,
-                currency: "usd",
-                destination: band.stripeAccountId,
-                metadata: { gigId, bandId },
-              });
-            } catch (err) {
-              console.error("Stripe transfer failed:", err);
-            }
-          }
-        }
       }
       break;
     }

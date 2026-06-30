@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 import { formatAmount } from "@/lib/stripe";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ExportRecords } from "@/components/ExportRecords";
@@ -10,8 +11,11 @@ export default async function VenueDashboard() {
   const session = await getSession();
   if (!session || session.user.role !== "VENUE") redirect("/login");
 
+  const active = await getActiveVenue(session.user.id);
+  if (!active) redirect("/login");
+
   const venue = await prisma.venue.findUnique({
-    where: { userId: session.user.id },
+    where: { id: active.id },
     include: {
       gigs: {
         include: {
@@ -23,7 +27,7 @@ export default async function VenueDashboard() {
         take: 20,
       },
     },
-  });
+  })!;
 
   if (!venue) redirect("/login");
 
@@ -35,7 +39,7 @@ export default async function VenueDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold">{venue.name}</h1>
           <p className="text-gray-500 text-sm mt-1">{venue.address} · Capacity {venue.capacity.toLocaleString()}</p>
@@ -44,7 +48,7 @@ export default async function VenueDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="card text-center">
           <div className="text-3xl font-bold text-indigo-600">{upcomingConfirmed.length}</div>
           <div className="text-sm text-gray-500 mt-1">Confirmed</div>
@@ -135,7 +139,9 @@ export default async function VenueDashboard() {
         )}
       </div>
 
-      <ExportRecords endpoint="/api/venues/me/export" />
+      <div className="mt-6">
+        <ExportRecords endpoint="/api/venues/me/export" />
+      </div>
     </div>
   );
 }

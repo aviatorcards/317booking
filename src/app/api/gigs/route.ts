@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveVenue } from "@/lib/activeVenue";
 
 // GET /api/gigs?status=OPEN&month=YYYY-MM
 export async function GET(req: NextRequest) {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const data = schema.parse(body);
 
-  const venue = await prisma.venue.findUnique({ where: { userId: session.user.id } });
+  const venue = await getActiveVenue(session.user.id);
   if (!venue) return NextResponse.json({ error: "Venue not found" }, { status: 404 });
 
   const tier = await prisma.payTier.findUnique({ where: { id: data.payTierId } });
