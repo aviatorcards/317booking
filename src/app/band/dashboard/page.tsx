@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate, formatShowDay } from "@/lib/timezone";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WithdrawClaimButton } from "../WithdrawClaimButton";
 import { ExportRecords } from "@/components/ExportRecords";
@@ -74,9 +75,7 @@ export default async function BandDashboard() {
                     {claim.gig.venue.name}
                   </Link>
                   <div className="text-sm text-gray-500">
-                    {new Date(claim.gig.date).toLocaleDateString("en-US", {
-                      weekday: "long", month: "long", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDate(new Date(claim.gig.date))}
                   </div>
                 </div>
                 <div className="text-right">
@@ -105,9 +104,7 @@ export default async function BandDashboard() {
                     {claim.gig.venue.name}
                   </Link>
                   <div className="text-sm text-gray-500">
-                    {new Date(claim.gig.date).toLocaleDateString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDay(new Date(claim.gig.date))}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

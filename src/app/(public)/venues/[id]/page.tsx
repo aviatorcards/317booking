@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate, formatShowDay } from "@/lib/timezone";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export const revalidate = 10;
@@ -131,12 +132,7 @@ export default async function VenueDetailPage({
                           <StatusBadge status={gig.status} />
                         </div>
                         <p className="text-xs text-brand-400 font-medium">
-                          {new Date(gig.date).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {formatShowDate(new Date(gig.date))}
                         </p>
                         {confirmedClaim && (
                           <p className="text-xs text-brand-400 mt-2">
@@ -182,11 +178,7 @@ export default async function VenueDetailPage({
                     >
                       <div>
                         <div className="font-semibold text-brand-900">
-                          {new Date(gig.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {formatShowDay(new Date(gig.date))}
                         </div>
                         {confirmedClaim ? (
                           <p className="text-xs text-brand-300 mt-0.5">

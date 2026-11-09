@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EditGigClient } from "./EditGigClient";
+import { formatDatetimeLocal } from "@/lib/timezone";
 
 export default async function EditGigPage({ params }: { params: { id: string } }) {
   const session = await getSession();
@@ -31,12 +32,6 @@ export default async function EditGigPage({ params }: { params: { id: string } }
     ? ["date", "payTierId", "claimMode"]
     : [];
 
-  function toDatetimeLocal(date: Date) {
-    const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  }
-
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
       <div className="mb-6">
@@ -49,7 +44,7 @@ export default async function EditGigPage({ params }: { params: { id: string } }
         gigId={params.id}
         tiers={tiers}
         initialValues={{
-          date: toDatetimeLocal(gig.date),
+          date: formatDatetimeLocal(gig.date),
           payTierId: gig.payTierId,
           description: gig.description,
           claimMode: gig.claimMode,

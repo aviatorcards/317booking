@@ -53,7 +53,9 @@ export async function PATCH(req: NextRequest) {
     where: { id: session.user.id },
     data: {
       ...(email ? { email } : {}),
-      ...(newPassword ? { passwordHash: await hash(newPassword, 12) } : {}),
+      ...(newPassword
+        ? { passwordHash: await hash(newPassword, 12), sessionVersion: { increment: 1 } }
+        : {}),
     },
   });
 

@@ -8,7 +8,10 @@ const schema = z.object({
   name: z.string().min(1).max(100),
   address: z.string().min(1).max(200),
   capacity: z.number().int().min(1).max(100000),
-  logoUrl: z.string().url().optional().or(z.literal('')),
+  logoUrl: z.string().max(500).refine(
+    (value) => value === "" || value.startsWith("/api/uploads/") || /^https:\/\/\S+$/.test(value),
+    "Logo must be an uploaded image or an https URL"
+  ).optional(),
 });
 
 export async function PATCH(req: NextRequest) {

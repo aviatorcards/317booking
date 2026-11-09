@@ -1,34 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
+import { getSession } from "@/lib/auth";
+import { generatedUploadName, uploadDir, validateImageUpload } from "@/lib/uploads";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user?.id || session.user.role !== "VENUE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const data = await req.formData();
-    const file: File | null = data.get("file") as unknown as File;
-    
-    if (!file || !file.name) {
+    const file = data.get("file");
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-    
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    
-    const uniqueName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-    
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true }).catch(() => {});
-    
-    const path = join(uploadDir, uniqueName);
-    await writeFile(path, buffer);
-    
-    return NextResponse.json({ url: `/uploads/${uniqueName}` });
+
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const checked = validateImageUpload(bytes, file.type);
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
+
+    const name = generatedUploadName(checked.ext);
+    const dir = uploadDir();
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, name), bytes);
+
+    return NextResponse.json({ url: `/api/uploads/${name}` });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

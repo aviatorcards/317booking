@@ -1,20 +1,25 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { editableMonths, daysInMonth } from "@/lib/availability";
+import { editableMonths, daysInMonth, weekdayIndex } from "@/lib/availability";
+import { formatMonthLabel } from "@/lib/timezone";
 
 export default function AvailabilityPage() {
   const months = editableMonths();
   const [selectedMonth, setSelectedMonth] = useState(months[0] ?? "");
   const [availableDates, setAvailableDates] = useState<number[]>([]);
+  const [locked, setLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   const loadMonth = useCallback(async (month: string) => {
     const res = await fetch(`/api/availability?month=${month}`);
     const data = await res.json();
     setAvailableDates(data.availableDates ?? []);
+    setLocked(!!data.locked);
     setSaved(false);
+    setError("");
   }, []);
 
   useEffect(() => {
@@ -22,6 +27,7 @@ export default function AvailabilityPage() {
   }, [selectedMonth, loadMonth]);
 
   function toggleDay(day: number) {
+    if (locked) return;
     setAvailableDates((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
@@ -30,29 +36,29 @@ export default function AvailabilityPage() {
 
   async function save() {
     setSaving(true);
-    await fetch("/api/availability", {
+    setError("");
+    const res = await fetch("/api/availability", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ month: selectedMonth, availableDates }),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not save");
+      return;
+    }
     setSaved(true);
   }
 
   const totalDays = selectedMonth ? daysInMonth(selectedMonth) : 31;
-  const [year, mon] = selectedMonth ? selectedMonth.split("-").map(Number) : [0, 0];
-  const startDay = selectedMonth ? new Date(year, mon - 1, 1).getDay() : 0;
-
-  function monthLabel(m: string) {
-    const [y, mo] = m.split("-").map(Number);
-    return new Date(y, mo - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  }
+  const startDay = selectedMonth ? weekdayIndex(selectedMonth) : 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold mb-2">Set Availability</h1>
       <p className="text-gray-500 text-sm mb-6">
-        Mark the days you&apos;re available to play. You can update this at any time.
+        Mark the days you&apos;re available to play. A month locks at the start of the 25th of the previous month.
       </p>
 
       {/* Month selector */}
@@ -67,7 +73,7 @@ export default function AvailabilityPage() {
                 : "bg-white text-gray-700 border-gray-200 hover:border-indigo-400"
             }`}
           >
-            {monthLabel(m)}
+            {formatMonthLabel(m)}
           </button>
         ))}
       </div>
@@ -105,10 +111,12 @@ export default function AvailabilityPage() {
           </div>
 
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={save} disabled={saving} className="btn-primary">
-              {saving ? "Saving…" : "Save availability"}
+            <button onClick={save} disabled={saving || locked} className="btn-primary">
+              {locked ? "Month locked" : saving ? "Saving…" : "Save availability"}
             </button>
+            {locked && <span className="text-sm text-amber-700">This month is locked.</span>}
             {saved && <span className="text-sm text-green-600">Saved!</span>}
+            {error && <span className="text-sm text-red-600">{typeof error === "string" ? error : "Could not save"}</span>}
             <span className="text-sm text-gray-400">{availableDates.length} days selected</span>
           </div>
         </>

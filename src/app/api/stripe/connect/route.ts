@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import { appBaseUrl } from "@/lib/payments";
 
 // GET /api/stripe/connect — return band's Stripe account status
 export async function GET() {
@@ -25,7 +26,7 @@ export async function GET() {
 }
 
 // POST /api/stripe/connect — create/retrieve account and return an onboarding link
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   const session = await getSession();
   if (!session || session.user.role !== "BAND") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,11 +46,11 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const origin = req.headers.get("origin") ?? process.env.NEXTAUTH_URL ?? "";
+  const base = appBaseUrl();
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${origin}/band/settings?stripe=refresh`,
-    return_url: `${origin}/band/settings?stripe=success`,
+    refresh_url: `${base}/band/settings?stripe=refresh`,
+    return_url: `${base}/band/settings?stripe=success`,
     type: "account_onboarding",
   });
 

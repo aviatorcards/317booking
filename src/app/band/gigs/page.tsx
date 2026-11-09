@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate } from "@/lib/timezone";
 
 export default async function BandGigsPage() {
   const session = await getSession();
@@ -72,12 +73,7 @@ export default async function BandGigsPage() {
         <div>
           <div className="font-semibold text-brand-900">{gig.venue.name}</div>
           <div className="text-sm text-gray-500">
-            {new Date(gig.date).toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
+            {formatShowDate(new Date(gig.date))}
             {" · "}
             {gig.venue.address}
           </div>

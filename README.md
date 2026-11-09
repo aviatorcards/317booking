@@ -32,7 +32,9 @@ Open `.env.local` and fill in the required values:
 |---|---|---|
 | `DATABASE_URL` | ✅ | Postgres connection string |
 | `NEXTAUTH_SECRET` | ✅ | `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | ✅ | Full URL of your app, e.g. `http://localhost:3000` |
+| `NEXTAUTH_URL` | ✅ | Full URL of your app. Local npm: `http://localhost:3000`. Docker Compose publishes port 3001, so use `http://localhost:3001` there. |
+| `APP_TIMEZONE` |  | IANA zone for show times. Defaults to `America/Indiana/Indianapolis`. |
+| `UPLOAD_DIR` |  | Venue logo files. Defaults to `./uploads`, outside `public/`. |
 | `STRIPE_SECRET_KEY` | ✅ | From your Stripe dashboard |
 | `STRIPE_WEBHOOK_SECRET` | ✅ | From `stripe listen` or the Stripe dashboard |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | From your Stripe dashboard |
@@ -41,8 +43,17 @@ Open `.env.local` and fill in the required values:
 ### 3. Set up the database
 
 ```bash
-npm run db:push       # applies the Prisma schema to your database
+npm run db:migrate    # applies Prisma migrations (use this for every environment)
 ```
+
+If a database was previously created with `prisma db push` and has no `_prisma_migrations` table, baseline it once before deploying the new migrations:
+
+```bash
+npx prisma migrate resolve --applied 20261109000000_baseline
+npx prisma migrate deploy
+```
+
+`migrate resolve` marks the baseline as already applied and does not change tables. `migrate deploy` then applies only the later migrations. Do this before starting a container whose command is `prisma migrate deploy`, or that boot will try to create tables that already exist.
 
 ### 4. Create your admin account
 
@@ -71,17 +82,17 @@ Log in at `http://localhost:3000/login` with the admin credentials you just crea
 A `docker-compose.yml` is included that runs the app and a Postgres database together.
 
 ```bash
-# Copy and fill in your env vars
+# Copy and fill in your env vars. Set STUDIOSYNC_WEBHOOK_SECRET before exposing the webhook.
 cp .env.example .env
 
-# Start everything
+# The compose file joins an external network shared with StudioSync. Create it once.
+docker network create booking-shared
+
+# Start everything (the container runs prisma migrate deploy on boot)
 docker compose up -d
 
-# Apply the schema
-docker compose exec app npx prisma migrate deploy
-
-# Create your admin account (same as above, just point at the right port)
-curl -X POST http://localhost:3000/api/setup \
+# Create your admin account (the compose file publishes the app on port 3001)
+curl -X POST http://localhost:3001/api/setup \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"yourpassword"}'
 ```
@@ -121,8 +132,10 @@ https://yourdomain.com/api/webhooks/stripe
 ```
 
 Listen for these events:
+- `checkout.session.completed`
 - `payment_intent.succeeded`
-- `transfer.created`
+
+`checkout.session.completed` marks the gig paid and completed. `payment_intent.succeeded` does the same if the Checkout event is missed. Both are idempotent.
 
 Paste the webhook signing secret into `STRIPE_WEBHOOK_SECRET` in your env.
 

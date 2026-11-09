@@ -53,7 +53,7 @@ export default function Home() {
             <div className="text-3xl mb-4">💸</div>
             <h3 className="font-semibold text-lg mb-2">Get paid automatically</h3>
             <p className="text-gray-500 text-sm">
-              Payment deposits on booking. 24 hours after the show, funds transfer directly to the band. Zero booker fees.
+              When the venue checks out, Stripe pays the band&apos;s connected account and keeps the platform fee. Zero booker fees.
             </p>
           </div>
         </div>

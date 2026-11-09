@@ -157,7 +157,7 @@ x-studiosync-signature: sha256=<hex>      # StudioSync → 317booking
 x-317booking-signature: sha256=<hex>      # 317booking → StudioSync
 ```
 
-If `STUDIOSYNC_WEBHOOK_SECRET` (317booking) or `BOOKING_317_WEBHOOK_SECRET` (StudioSync) is not set, signature checking is skipped — safe for local development, but **always set a secret in production**.
+`STUDIOSYNC_WEBHOOK_SECRET` must be set or 317booking rejects inbound webhooks and will not sign outbound ones. Use the same value as `BOOKING_317_WEBHOOK_SECRET` in StudioSync. Do not leave it empty in a deployed environment.
 
 ---
 

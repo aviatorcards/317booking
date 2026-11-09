@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac, timingSafeEqual, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { verifyStudioSyncSignature } from "@/lib/studiosync";
+import { hashToken, newToken } from "@/lib/tokens";
 
 const schema = z.object({
   event: z.enum(["band.created", "band.updated"]),
@@ -15,27 +17,16 @@ const schema = z.object({
   }),
 });
 
-function verifySignature(body: string, signature: string | null): boolean {
-  const secret = process.env.STUDIOSYNC_WEBHOOK_SECRET;
-  if (!secret) {
-    console.warn("STUDIOSYNC_WEBHOOK_SECRET not set — skipping signature check");
-    return true; // allow in dev if secret not configured
-  }
-  if (!signature) return false;
-
-  const expected = createHmac("sha256", secret).update(body).digest("hex");
-  const expectedBuf = Buffer.from(`sha256=${expected}`, "utf8");
-  const actualBuf = Buffer.from(signature, "utf8");
-
-  if (expectedBuf.length !== actualBuf.length) return false;
-  return timingSafeEqual(expectedBuf, actualBuf);
-}
-
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-studiosync-signature");
+  const secret = process.env.STUDIOSYNC_WEBHOOK_SECRET;
 
-  if (!verifySignature(rawBody, signature)) {
+  if (!secret) {
+    console.error("STUDIOSYNC_WEBHOOK_SECRET is not set — rejecting webhook");
+    return NextResponse.json({ error: "Webhook secret is not configured" }, { status: 500 });
+  }
+  if (!verifyStudioSyncSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -97,11 +88,11 @@ export async function POST(req: NextRequest) {
     const icalUrl = appUrl ? `${appUrl}/api/bands/${user.band!.id}/calendar.ics` : null;
 
     // Send the band a password-set email so they can log in
-    const resetToken = randomBytes(32).toString("hex");
+    const resetToken = newToken();
     await prisma.passwordResetToken.create({
       data: {
         userId: user.id,
-        token: resetToken,
+        token: hashToken(resetToken),
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days for first-time setup
       },
     });

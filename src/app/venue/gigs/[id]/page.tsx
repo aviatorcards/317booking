@@ -8,6 +8,7 @@ import { ConfirmBandButton } from "./ConfirmBandButton";
 import { CancelGigButton } from "./CancelGigButton";
 import { PayGigButton } from "./PayGigButton";
 import { RateGigForm } from "./RateGigForm";
+import { formatShowDate } from "@/lib/timezone";
 
 export default async function VenueGigPage({ params }: { params: { id: string } }) {
   const session = await getSession();
@@ -57,9 +58,7 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold">
-              {new Date(gig.date).toLocaleDateString("en-US", {
-                weekday: "long", month: "long", day: "numeric", year: "numeric",
-              })}
+              {formatShowDate(new Date(gig.date))}
             </h1>
             <div className="text-sm text-gray-500 mt-1">
               {formatAmount(gig.payTier.amount)} · {gig.payTier.name}
@@ -74,7 +73,7 @@ export default async function VenueGigPage({ params }: { params: { id: string } 
 
         {gig.description && <p className="text-sm text-gray-600">{gig.description}</p>}
 
-        {(gig.status === "OPEN" || gig.status === "PENDING") && (
+        {(gig.status === "OPEN" || gig.status === "PENDING" || (gig.status === "CONFIRMED" && gig.payment?.status !== "PAID" && !gig.payment?.releasedAt)) && (
           <div className="mt-4 pt-4 border-t border-gray-100">
             <CancelGigButton gigId={gig.id} />
           </div>

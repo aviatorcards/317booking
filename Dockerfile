@@ -2,7 +2,7 @@
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json* .npmrc ./
 COPY prisma ./prisma
 RUN npm ci
 
@@ -32,10 +32,13 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=deps /app/node_modules ./node_modules
 
+RUN mkdir -p /app/uploads && chown nextjs:nextjs /app/uploads
+ENV UPLOAD_DIR=/app/uploads
+
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "node_modules/.bin/prisma db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node server.js"]

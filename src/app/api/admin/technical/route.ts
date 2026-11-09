@@ -22,8 +22,13 @@ export async function GET() {
   });
 
   const config = ALLOWED_KEYS.reduce((acc, key) => {
-    const s = settings.find((x: any) => x.key === key);
-    acc[key] = s ? s.value : "";
+    const s = settings.find((x) => x.key === key);
+    if (key === "SMTP_PASS") {
+      acc[key] = "";
+      acc.SMTP_PASS_SET = s?.value ? "true" : "";
+    } else {
+      acc[key] = s ? s.value : "";
+    }
     return acc;
   }, {} as Record<string, string>);
 
@@ -39,6 +44,7 @@ export async function PATCH(req: Request) {
   const body = await req.json();
 
   for (const key of ALLOWED_KEYS) {
+    if (key === "SMTP_PASS" && (body[key] === "" || body[key] === "********")) continue;
     if (body[key] !== undefined) {
       await prisma.systemSetting.upsert({
         where: { key },
