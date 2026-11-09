@@ -23,7 +23,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system -G nodejs --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -32,7 +32,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=deps /app/node_modules ./node_modules
 
-RUN mkdir -p /app/uploads && chown nextjs:nextjs /app/uploads
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 ENV UPLOAD_DIR=/app/uploads
 
 USER nextjs
