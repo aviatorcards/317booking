@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAppTimeZone, zonedParts } from "@/lib/timezone";
 
 function foldLine(line: string): string {
   // RFC 5545 §3.1: lines longer than 75 octets must be folded
@@ -18,11 +19,10 @@ function foldLine(line: string): string {
 }
 
 function icsDate(date: Date): string {
-  // Emit as all-day DATE value (YYYYMMDD)
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
+  const p = zonedParts(date, getAppTimeZone());
+  const m = String(p.month).padStart(2, "0");
+  const d = String(p.day).padStart(2, "0");
+  return `${p.year}${m}${d}`;
 }
 
 function escapeText(s: string): string {
@@ -47,6 +47,7 @@ export async function GET(
     where: {
       bandId: band.id,
       status: "CONFIRMED",
+      gig: { status: { in: ["CONFIRMED", "COMPLETED"] } },
     },
     include: {
       gig: {
@@ -65,15 +66,16 @@ export async function GET(
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(band.name)} Gigs`,
-    "X-WR-TIMEZONE:UTC",
+    `X-WR-TIMEZONE:${getAppTimeZone()}`,
   ];
 
   for (const claim of claims) {
     const gig = claim.gig;
     const gigDate = new Date(gig.date);
     // All-day event: DTEND is the next day per RFC 5545
-    const nextDay = new Date(gigDate);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const p = zonedParts(gigDate, getAppTimeZone());
+    const next = new Date(Date.UTC(p.year, p.month - 1, p.day));
+    next.setUTCDate(next.getUTCDate() + 1);
 
     const summary = `Gig @ ${gig.venue.name}`;
     const description = [
@@ -90,7 +92,7 @@ export async function GET(
     lines.push(foldLine(`DESCRIPTION:${escapeText(description)}`));
     lines.push(foldLine(`LOCATION:${escapeText(gig.venue.address)}`));
     lines.push(`DTSTART;VALUE=DATE:${icsDate(gigDate)}`);
-    lines.push(`DTEND;VALUE=DATE:${icsDate(nextDay)}`);
+    lines.push(`DTEND;VALUE=DATE:${next.getUTCFullYear()}${String(next.getUTCMonth() + 1).padStart(2, "0")}${String(next.getUTCDate()).padStart(2, "0")}`);
     lines.push(`STATUS:${gig.status === "COMPLETED" ? "COMPLETED" : "CONFIRMED"}`);
     lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`);
     lines.push("END:VEVENT");

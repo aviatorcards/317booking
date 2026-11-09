@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio",
@@ -22,9 +24,9 @@
     "@react-email/render": "^2.0.9",
     "@react-pdf/renderer": "^4.5.1",
     "bcryptjs": "^2.4.3",
-    "next": "14.2.5",
-    "next-auth": "^4.24.7",
-    "nodemailer": "^7.0.13",
+    "next": "^14.2.35",
+    "next-auth": "^4.24.15",
+    "nodemailer": "^10.4.0",
     "react": "^18",
     "react-dom": "^18",
     "stripe": "^16.2.0",
@@ -39,11 +41,13 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.19",
     "eslint": "^8",
-    "eslint-config-next": "14.2.5",
+    "eslint-config-next": "^14.2.35",
     "postcss": "^8",
     "prisma": "^5.14.0",
     "tailwindcss": "^3.4.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^6.4.5",
+    "vitest": "^5.1.0"
   }
 }

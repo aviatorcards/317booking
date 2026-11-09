@@ -34,17 +34,20 @@ enum ClaimStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         UserRole
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  role            UserRole
+  sessionVersion  Int       @default(0)
+  emailVerified   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   band   Band?
   venues Venue[]
 
-  passwordResetTokens PasswordResetToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model Band {
@@ -139,15 +142,24 @@ model GigRating {
   createdAt DateTime @default(now())
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
 model Payment {
-  id                    String    @id @default(cuid())
-  gigId                 String    @unique
-  gig                   Gig       @relation(fields: [gigId], references: [id])
-  stripePaymentIntentId String?
-  amount                Int // in cents
-  platformFee           Int       @default(0)
-  releasedAt            DateTime?
-  createdAt             DateTime  @default(now())
+  id                      String        @id @default(cuid())
+  gigId                   String        @unique
+  gig                     Gig           @relation(fields: [gigId], references: [id])
+  stripePaymentIntentId   String?
+  stripeCheckoutSessionId String?       @unique
+  checkoutAttempt         Int           @default(0)
+  status                  PaymentStatus @default(PENDING)
+  amount                  Int // in cents
+  platformFee             Int           @default(0)
+  releasedAt              DateTime?
+  createdAt               DateTime      @default(now())
 }
 
 model WebhookOutbox {
@@ -168,7 +180,17 @@ model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String    @unique
+  token     String    @unique // sha256 hash of the raw token
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())

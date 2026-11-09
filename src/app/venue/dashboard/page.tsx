@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveVenue } from "@/lib/activeVenue";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate } from "@/lib/timezone";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ExportRecords } from "@/components/ExportRecords";
 
@@ -85,9 +86,7 @@ export default async function VenueDashboard() {
               >
                 <div>
                   <div className="font-medium">
-                    {new Date(gig.date).toLocaleDateString("en-US", {
-                      weekday: "short", month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDate(new Date(gig.date))}
                   </div>
                   <div className="text-sm text-gray-500">
                     {gig._count.claims} claimant{gig._count.claims !== 1 ? "s" : ""} · {formatAmount(gig.payTier.amount)}
@@ -121,9 +120,7 @@ export default async function VenueDashboard() {
               >
                 <div>
                   <div className="font-medium">
-                    {new Date(gig.date).toLocaleDateString("en-US", {
-                      weekday: "short", month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDate(new Date(gig.date))}
                   </div>
                   <div className="text-sm text-gray-500">
                     {gig._count.claims} claim{gig._count.claims !== 1 ? "s" : ""}

@@ -12,6 +12,9 @@
 .env.local
 .env.*.local
 
+# runtime uploads (served via /api/uploads, not from public/)
+/uploads
+
 # misc
 .DS_Store
 *.pem

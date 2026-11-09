@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDay } from "@/lib/timezone";
 import { CancelGigButton } from "./CancelGigButton";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -13,12 +14,16 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-gray-100 text-gray-500",
 };
 
-export default async function AdminGigsPage() {
+export default async function AdminGigsPage({ searchParams }: { searchParams: { page?: string } }) {
   const session = await getSession();
   if (!session || session.user.role !== "ADMIN") redirect("/login");
 
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const pageSize = 50;
   const gigs = await prisma.gig.findMany({
     orderBy: { date: "desc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
     include: {
       venue: { select: { id: true, name: true } },
       payTier: { select: { name: true, amount: true } },
@@ -28,12 +33,14 @@ export default async function AdminGigsPage() {
       },
     },
   });
+  const hasMore = gigs.length > pageSize;
+  const pageGigs = hasMore ? gigs.slice(0, pageSize) : gigs;
 
   const cancellable = (status: string) => status !== "COMPLETED" && status !== "CANCELLED";
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold mb-8">Gigs ({gigs.length})</h1>
+      <h1 className="text-2xl font-bold mb-8">Gigs</h1>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -50,15 +57,13 @@ export default async function AdminGigsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {gigs.map((gig) => {
+            {pageGigs.map((gig) => {
               const confirmedBand = gig.claims[0]?.band;
 
               return (
                 <tr key={gig.id} className="hover:bg-gray-50">
                   <td className="py-3 pr-4 whitespace-nowrap text-gray-600">
-                    {new Date(gig.date).toLocaleDateString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDay(new Date(gig.date))}
                   </td>
                   <td className="py-3 pr-4 font-medium">
                     <Link href={`/admin/venues/${gig.venue.id}`} className="text-brand-500 hover:underline">
@@ -95,10 +100,16 @@ export default async function AdminGigsPage() {
           </tbody>
         </table>
 
-        {gigs.length === 0 && (
+        {pageGigs.length === 0 && (
           <p className="text-center text-gray-400 py-12">No gigs yet.</p>
         )}
       </div>
+      {(page > 1 || hasMore) && (
+        <div className="flex gap-3 mt-6">
+          {page > 1 && <Link className="btn-secondary text-sm" href={`/admin/gigs?page=${page - 1}`}>Previous</Link>}
+          {hasMore && <Link className="btn-secondary text-sm" href={`/admin/gigs?page=${page + 1}`}>Next</Link>}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveVenue } from "@/lib/activeVenue";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate, formatMonthLabel, zonedMonthRange } from "@/lib/timezone";
 import { toCSV, toXLSX } from "@/lib/export";
 import { renderPDF } from "@/lib/pdf";
 
@@ -19,12 +20,7 @@ export async function GET(req: NextRequest) {
   const venue = await getActiveVenue(session.user.id);
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const dateFilter = month
-    ? (() => {
-        const [y, m] = month.split("-").map(Number);
-        return { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
-      })()
-    : undefined;
+  const dateFilter = month && /^\d{4}-\d{2}$/.test(month) ? zonedMonthRange(month) : undefined;
 
   const gigs = await prisma.gig.findMany({
     where: {
@@ -50,9 +46,7 @@ export async function GET(req: NextRequest) {
     const fee = payment?.platformFee ?? 0;
     const net = gross - fee;
     return {
-      "Date": new Date(gig.date).toLocaleDateString("en-US", {
-        weekday: "short", month: "short", day: "numeric", year: "numeric",
-      }),
+      "Date": formatShowDate(gig.date),
       "Band": confirmedBand?.name ?? "—",
       "Genre": confirmedBand?.genre ?? "—",
       "Pay Tier": gig.payTier.name,
@@ -64,11 +58,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  const periodLabel = month
-    ? new Date(Number(month.split("-")[0]), Number(month.split("-")[1]) - 1, 1)
-        .toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    : "All Time";
-  const filename = `317booking-${venue.name.replace(/\s+/g, "-").toLowerCase()}-${month ?? "all"}`;
+  const periodLabel = month && /^\d{4}-\d{2}$/.test(month) ? formatMonthLabel(month) : "All Time";
+  const safeName = venue.name.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "venue";
+  const filename = `317booking-${safeName}-${month && /^\d{4}-\d{2}$/.test(month) ? month : "all"}`;
 
   if (format === "xlsx") {
     const buffer = toXLSX(rows, "Gig Records");

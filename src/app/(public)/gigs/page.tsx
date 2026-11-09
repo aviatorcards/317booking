@@ -3,33 +3,23 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatShowDate, showDay, showMonthKey, upcomingMonthOptions, zonedMonthRange } from "@/lib/timezone";
 
 export const revalidate = 60;
-
-function getMonthOptions() {
-  const options: { label: string; value: string }[] = [];
-  const now = new Date();
-  for (let i = 0; i < 3; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    options.push({ label, value });
-  }
-  return options;
-}
 
 export default async function GigsPage({
   searchParams,
 }: {
-  searchParams: { month?: string };
+  searchParams: { month?: string; page?: string };
 }) {
   const session = await getSession();
   const month = searchParams.month;
 
-  const where: Record<string, unknown> = { status: "OPEN" };
-  if (month) {
-    const [year, mon] = month.split("-").map(Number);
-    where.date = { gte: new Date(year, mon - 1, 1), lt: new Date(year, mon, 1) };
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const pageSize = 24;
+  const where: Record<string, unknown> = { status: { in: ["OPEN", "PENDING"] } };
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    where.date = zonedMonthRange(month);
   } else {
     where.date = { gte: new Date() };
   }
@@ -42,7 +32,11 @@ export default async function GigsPage({
       _count: { select: { claims: true } },
     },
     orderBy: { date: "asc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   });
+  const hasMore = gigs.length > pageSize;
+  if (hasMore) gigs.pop();
 
   // If band, load their availability to show which gigs they can claim
   let availMap: Record<string, number[]> = {};
@@ -55,12 +49,10 @@ export default async function GigsPage({
   }
 
   function isAvailableForGig(gigDate: Date) {
-    const month = gigDate.toISOString().slice(0, 7);
-    const day = gigDate.getUTCDate();
-    return availMap[month]?.includes(day) ?? false;
+    return availMap[showMonthKey(gigDate)]?.includes(showDay(gigDate)) ?? false;
   }
 
-  const monthOptions = getMonthOptions();
+  const monthOptions = upcomingMonthOptions();
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -128,9 +120,7 @@ export default async function GigsPage({
                     )}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {new Date(gig.date).toLocaleDateString("en-US", {
-                      weekday: "long", month: "long", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDate(new Date(gig.date))}
                     {" · "}
                     {gig.venue.address}
                   </div>
@@ -150,6 +140,20 @@ export default async function GigsPage({
               </Link>
             );
           })}
+        </div>
+      )}
+      {(page > 1 || hasMore) && (
+        <div className="flex gap-3 mt-6">
+          {page > 1 && (
+            <Link className="btn-secondary text-sm" href={`/gigs?${new URLSearchParams({ ...(month ? { month } : {}), page: String(page - 1) })}`}>
+              Previous
+            </Link>
+          )}
+          {hasMore && (
+            <Link className="btn-secondary text-sm" href={`/gigs?${new URLSearchParams({ ...(month ? { month } : {}), page: String(page + 1) })}`}>
+              Next
+            </Link>
+          )}
         </div>
       )}
     </div>

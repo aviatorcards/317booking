@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 
@@ -24,6 +24,21 @@ function outboxUrl(): string | null {
   return base ? `${base}/api/gigs/webhooks/317booking/` : null;
 }
 
+type OutboxWriter = {
+  webhookOutbox: {
+    create(args: { data: { url: string; payload: Prisma.InputJsonValue } }): Promise<unknown>;
+  };
+};
+
+/** Write the outbox row on the caller's transaction client so it commits or rolls back with the gig. */
+export async function writeOutbox(tx: OutboxWriter, payload: WebhookPayload): Promise<void> {
+  const url = outboxUrl();
+  if (!url) return;
+  await tx.webhookOutbox.create({
+    data: { url, payload: payload as unknown as Prisma.InputJsonValue },
+  });
+}
+
 // For use inside prisma.$transaction([...]) — commits atomically with surrounding business logic.
 export function webhookOutboxOp(payload: WebhookPayload) {
   const url = outboxUrl();
@@ -31,6 +46,20 @@ export function webhookOutboxOp(payload: WebhookPayload) {
   return prisma.webhookOutbox.create({
     data: { url, payload: payload as unknown as Prisma.InputJsonValue },
   });
+}
+
+export function verifyStudioSyncSignature(
+  body: string,
+  signature: string | null,
+  secret: string | undefined
+): boolean {
+  if (!secret) return false;
+  if (!signature) return false;
+  const expected = createHmac("sha256", secret).update(body).digest("hex");
+  const expectedBuf = Buffer.from(`sha256=${expected}`, "utf8");
+  const actualBuf = Buffer.from(signature, "utf8");
+  if (expectedBuf.length !== actualBuf.length) return false;
+  return timingSafeEqual(expectedBuf, actualBuf);
 }
 
 // For use outside a transaction (cancel routes, etc.)

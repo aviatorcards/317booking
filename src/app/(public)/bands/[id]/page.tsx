@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate, formatShowDay } from "@/lib/timezone";
 
 export const revalidate = 10;
 
@@ -19,7 +20,7 @@ export default async function BandDetailPage({
       user: { select: { email: true } },
       ratings: { select: { gigId: true, rating: true, note: true, venue: { select: { name: true } } } },
       claims: {
-        where: { status: "CONFIRMED" },
+        where: { status: "CONFIRMED", gig: { status: { in: ["CONFIRMED", "COMPLETED"] } } },
         include: {
           gig: {
             include: {
@@ -45,6 +46,25 @@ export default async function BandDetailPage({
 
   // Check if viewer is owner of this band account or admin
   const isOwner = session?.user.id === band.userId || session?.user.role === "ADMIN";
+  let venueCanContact = false;
+  if (!isOwner && session?.user?.role === "VENUE" && session.user.id) {
+    const venues = await prisma.venue.findMany({ where: { userId: session.user.id }, select: { id: true } });
+    if (venues.length > 0) {
+      const live = await prisma.gigClaim.findFirst({
+        where: {
+          bandId: band.id,
+          status: { in: ["PENDING", "CONFIRMED"] },
+          gig: {
+            venueId: { in: venues.map((v) => v.id) },
+            status: { in: ["OPEN", "PENDING", "CONFIRMED"] },
+          },
+        },
+        select: { id: true },
+      });
+      venueCanContact = !!live;
+    }
+  }
+  const canSeeEmail = isOwner || venueCanContact;
 
   // Rating stats
   const ratingMap = Object.fromEntries(band.ratings.map((r) => [r.gigId, r]));
@@ -109,7 +129,7 @@ export default async function BandDetailPage({
                 </div>
               )}
 
-              {session && (
+              {canSeeEmail && (
                 <div>
                   <h3 className="text-xs font-semibold text-brand-300 uppercase tracking-wider mb-1">
                     Contact Email
@@ -191,12 +211,7 @@ export default async function BandDetailPage({
                       </Link>
                       <p className="text-xs text-brand-300 mt-0.5">{claim.gig.venue.address}</p>
                       <p className="text-xs text-brand-400 mt-2 font-medium">
-                        {new Date(claim.gig.date).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatShowDate(new Date(claim.gig.date))}
                       </p>
                     </div>
                     <div className="mt-3 sm:mt-0 text-left sm:text-right shrink-0">
@@ -237,11 +252,7 @@ export default async function BandDetailPage({
                             {claim.gig.venue.name}
                           </Link>
                           <p className="text-xs text-brand-300 mt-0.5">
-                            {new Date(claim.gig.date).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            {formatShowDay(new Date(claim.gig.date))}
                           </p>
                         </div>
                         <div className="text-right">

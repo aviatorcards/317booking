@@ -27,6 +27,7 @@ function RegisterForm() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verification, setVerification] = useState<{ devUrl?: string } | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,15 +45,38 @@ function RegisterForm() {
       body: JSON.stringify(payload),
     });
 
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Registration failed");
+      setError(typeof data.error === "string" ? data.error : "Registration failed");
+      setLoading(false);
+      return;
+    }
+
+    if (data.needsVerification) {
+      setVerification({ devUrl: data.devVerificationUrl });
       setLoading(false);
       return;
     }
 
     await signIn("credentials", { email, password, redirect: false });
     router.push("/dashboard");
+  }
+
+  if (verification) {
+    return (
+      <div className="w-full max-w-sm">
+        <div className="card space-y-3">
+          <h1 className="text-xl font-bold">Check your email</h1>
+          <p className="text-sm text-gray-500">
+            We sent a verification link to {email}. You can sign in, and you can claim or post gigs after the address is confirmed.
+          </p>
+          {verification.devUrl && (
+            <a href={verification.devUrl} className="text-sm text-indigo-600 break-all">{verification.devUrl}</a>
+          )}
+          <Link href="/login" className="btn-primary inline-block text-center">Go to sign in</Link>
+        </div>
+      </div>
+    );
   }
 
   return (

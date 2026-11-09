@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDay } from "@/lib/timezone";
 
 export default async function AdminPage() {
   const session = await getSession();
@@ -61,9 +62,7 @@ export default async function AdminPage() {
                   </Link>
                 </div>
                 <div className="text-sm text-gray-500">
-                  {new Date(gig.date).toLocaleDateString("en-US", {
-                    month: "short", day: "numeric", year: "numeric",
-                  })}
+                  {formatShowDay(new Date(gig.date))}
                   {" · "}
                   {formatAmount(gig.payTier.amount)}
                 </div>

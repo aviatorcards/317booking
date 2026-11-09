@@ -9,6 +9,8 @@ import { GigCancelledEmail } from "@/emails/GigCancelledEmail";
 import { PaymentReleasedEmail } from "@/emails/PaymentReleasedEmail";
 import { PasswordResetEmail } from "@/emails/PasswordResetEmail";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDate } from "@/lib/timezone";
+import { VerifyEmail } from "@/emails/VerifyEmail";
 
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 import { prisma } from "@/lib/prisma";
@@ -42,12 +44,25 @@ async function getTransporter() {
 }
 
 function gigDateStr(date: Date) {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatShowDate(date);
+}
+
+export async function sendVerificationEmail({
+  to,
+  name,
+  verificationUrl,
+}: {
+  to: string;
+  name: string;
+  verificationUrl: string;
+}): Promise<boolean> {
+  const transporter = await getTransporter();
+  if (!transporter) {
+    console.warn(`Email not sent — verification link for ${to}: ${verificationUrl}`);
+    return false;
+  }
+  await send(to, "Confirm your email", React.createElement(VerifyEmail, { name, verificationUrl }));
+  return true;
 }
 
 async function send(to: string, subject: string, element: React.ReactElement) {

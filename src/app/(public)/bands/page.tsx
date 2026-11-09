@@ -7,6 +7,7 @@ export const revalidate = 30;
 interface SearchParams {
   q?: string;
   genre?: string;
+  page?: string;
 }
 
 export default async function BandsPage({
@@ -16,6 +17,8 @@ export default async function BandsPage({
 }) {
   const q = searchParams.q || "";
   const selectedGenre = searchParams.genre || "";
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const pageSize = 24;
 
   // Query bands
   const where: any = {};
@@ -29,6 +32,8 @@ export default async function BandsPage({
   const bands = await prisma.band.findMany({
     where,
     orderBy: { name: "asc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
     include: {
       claims: {
         where: {
@@ -39,6 +44,8 @@ export default async function BandsPage({
       },
     },
   });
+  const hasMore = bands.length > pageSize;
+  const pageBands = hasMore ? bands.slice(0, pageSize) : bands;
 
   // Extract all unique genres for the filter dropdown
   const allBands = await prisma.band.findMany({ select: { genre: true } });
@@ -69,7 +76,7 @@ export default async function BandsPage({
       </div>
 
       {/* Band Grid */}
-      {bands.length === 0 ? (
+      {pageBands.length === 0 ? (
         <div className="card text-center py-20 bg-white border-brand-200">
           <div className="text-5xl mb-4">🎸</div>
           <h3 className="text-xl font-bold text-brand-900 mb-2 font-heading">No Musicians Found</h3>
@@ -79,7 +86,7 @@ export default async function BandsPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bands.map((band) => {
+          {pageBands.map((band) => {
             const confirmedCount = band.claims.length;
             const genres = band.genre.split(",").map((g) => g.trim()).filter(Boolean);
 
@@ -145,6 +152,16 @@ export default async function BandsPage({
               </div>
             );
           })}
+        </div>
+      )}
+      {(page > 1 || hasMore) && (
+        <div className="flex gap-3 mt-6">
+          {page > 1 && (
+            <Link className="btn-secondary text-sm" href={`/bands?${new URLSearchParams({ ...(q ? { q } : {}), ...(selectedGenre ? { genre: selectedGenre } : {}), page: String(page - 1) })}`}>Previous</Link>
+          )}
+          {hasMore && (
+            <Link className="btn-secondary text-sm" href={`/bands?${new URLSearchParams({ ...(q ? { q } : {}), ...(selectedGenre ? { genre: selectedGenre } : {}), page: String(page + 1) })}`}>Next</Link>
+          )}
         </div>
       )}
     </div>

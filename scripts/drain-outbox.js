@@ -17,13 +17,24 @@ async function drain() {
   });
 
   for (const job of jobs) {
+    const secret = process.env.STUDIOSYNC_WEBHOOK_SECRET;
+    if (!secret) {
+      await prisma.webhookOutbox.update({
+        where: { id: job.id },
+        data: {
+          attempts: job.attempts + 1,
+          status: "FAILED",
+          lastError: "STUDIOSYNC_WEBHOOK_SECRET is not set",
+        },
+      });
+      console.error(`[outbox] refusing unsigned delivery — ${job.id}`);
+      continue;
+    }
+
     const body = JSON.stringify(job.payload);
-    const secret = process.env.STUDIOSYNC_WEBHOOK_SECRET || "";
     const headers = {
       "Content-Type": "application/json",
-      ...(secret && {
-        "x-317booking-signature": `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`,
-      }),
+      "x-317booking-signature": `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`,
     };
 
     try {

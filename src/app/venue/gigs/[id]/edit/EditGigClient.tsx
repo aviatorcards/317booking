@@ -23,7 +23,7 @@ export function EditGigClient({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        date: `${values.date}:00.000Z`,
+        date: values.date,
         payTierId: values.payTierId,
         description: values.description,
         claimMode: values.claimMode,

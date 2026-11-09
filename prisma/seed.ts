@@ -7,6 +7,10 @@ const prisma = new PrismaClient();
 const DEMO_PASSWORD = "demo1234";
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    console.error("Refusing to seed while NODE_ENV=production.");
+    process.exit(1);
+  }
   console.log("Seeding demo data…");
 
   const pw = await hash(DEMO_PASSWORD, 12);
@@ -15,7 +19,7 @@ async function main() {
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@317booking.com" },
     update: {},
-    create: { email: "admin@317booking.com", passwordHash: pw, role: "ADMIN" },
+    create: { email: "admin@317booking.com", passwordHash: pw, role: "ADMIN", emailVerified: new Date() },
   });
   console.log("  admin:", adminUser.email);
 
@@ -69,7 +73,7 @@ async function main() {
     const user = await prisma.user.upsert({
       where: { email: v.email },
       update: {},
-      create: { id: v.userId, email: v.email, passwordHash: pw, role: "VENUE" },
+      create: { id: v.userId, email: v.email, passwordHash: pw, role: "VENUE", emailVerified: new Date() },
     });
     await prisma.venue.upsert({
       where: { id: v.venueId },
@@ -119,7 +123,7 @@ async function main() {
     const user = await prisma.user.upsert({
       where: { email: b.email },
       update: {},
-      create: { id: b.userId, email: b.email, passwordHash: pw, role: "BAND" },
+      create: { id: b.userId, email: b.email, passwordHash: pw, role: "BAND", emailVerified: new Date() },
     });
     await prisma.band.upsert({
       where: { userId: user.id },

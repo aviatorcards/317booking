@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveVenue } from "@/lib/activeVenue";
 import { NewGigClient } from "./NewGigClient";
+import { formatDatetimeLocal } from "@/lib/timezone";
 
 export default async function NewGigPage({
   searchParams,
@@ -39,16 +40,9 @@ export default async function NewGigPage({
     );
   }
 
-  // Format date for datetime-local input
-  function toDatetimeLocal(date: Date) {
-    const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  }
-
   const initialValues = sourceGig
     ? {
-        date: toDatetimeLocal(sourceGig.date),
+        date: formatDatetimeLocal(sourceGig.date),
         payTierId: sourceGig.payTierId,
         description: sourceGig.description,
         claimMode: sourceGig.claimMode,

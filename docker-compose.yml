@@ -6,7 +6,9 @@ services:
       - "3001:3000"
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@db:5432/317booking
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3001}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Indiana/Indianapolis}
+      UPLOAD_DIR: /app/uploads
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -18,7 +20,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       STUDIOSYNC_URL: http://studiosync-backend-1:8000
-      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-549257cb76493ed622b5c8e537034ce71cfe6b1f08a3c1dc4044ef81513a6ab7}
+      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-}
     networks:
       - default
       - booking-shared
@@ -32,7 +34,7 @@ services:
     command: ["node", "scripts/drain-outbox.js"]
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@db:5432/317booking
-      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-549257cb76493ed622b5c8e537034ce71cfe6b1f08a3c1dc4044ef81513a6ab7}
+      STUDIOSYNC_WEBHOOK_SECRET: ${STUDIOSYNC_WEBHOOK_SECRET:-}
     networks:
       - default
       - booking-shared

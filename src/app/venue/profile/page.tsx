@@ -163,7 +163,7 @@ export default function VenueProfilePage() {
                 />
                 {uploading && <p className="text-xs text-brand-500 mt-1 font-medium">Uploading image...</p>}
                 <p className="text-xs text-brand-300 mt-1.5">
-                  Upload an image file or provide a direct link to your venue's logo.
+                  Upload an image file or provide a direct link to your venue&apos;s logo.
                 </p>
               </div>
             </div>

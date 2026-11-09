@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDay } from "@/lib/timezone";
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: "bg-green-100 text-green-800",
@@ -136,9 +137,7 @@ export default async function AdminBandDetailPage({ params }: { params: { id: st
                 {band.claims.map((claim) => (
                   <tr key={claim.id} className="hover:bg-gray-50">
                     <td className="py-3 pr-4 whitespace-nowrap text-gray-600">
-                      {new Date(claim.gig.date).toLocaleDateString("en-US", {
-                        month: "short", day: "numeric", year: "numeric",
-                      })}
+                      {formatShowDay(new Date(claim.gig.date))}
                     </td>
                     <td className="py-3 pr-4 font-medium">{claim.gig.venue.name}</td>
                     <td className="py-3 pr-4 text-gray-500">{claim.gig.payTier.name}</td>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatAmount } from "@/lib/stripe";
+import { formatShowDay } from "@/lib/timezone";
 
 export default async function AdminPaymentsPage() {
   const session = await getSession();
@@ -74,9 +75,7 @@ export default async function AdminPaymentsPage() {
               return (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">
-                    {new Date(payment.gig.date).toLocaleDateString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
-                    })}
+                    {formatShowDay(new Date(payment.gig.date))}
                   </td>
                   <td className="py-3 pr-4 font-medium">{payment.gig.venue.name}</td>
                   <td className="py-3 pr-4 text-gray-700">{confirmedBand}</td>

@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ClaimButton } from "./ClaimButton";
 import { WithdrawClaimButton } from "@/app/band/WithdrawClaimButton";
 import { ConfirmBandButton } from "@/app/venue/gigs/[id]/ConfirmBandButton";
+import { formatShowDate, showDay, showMonthKey } from "@/lib/timezone";
 
 export default async function GigDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession();
@@ -43,8 +44,8 @@ export default async function GigDetailPage({ params }: { params: { id: string }
       const myClaim = gig.claims.find((c) => c.bandId === band.id);
       alreadyClaimed = !!myClaim;
       hasPendingClaim = myClaim?.status === "PENDING";
-      const month = gig.date.toISOString().slice(0, 7);
-      const day = gig.date.getUTCDate();
+      const month = showMonthKey(gig.date);
+      const day = showDay(gig.date);
       const avail = await prisma.availability.findUnique({
         where: { bandId_month: { bandId: band.id, month } },
       });
@@ -73,9 +74,7 @@ export default async function GigDetailPage({ params }: { params: { id: string }
           <div>
             <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Date</div>
             <div className="font-medium">
-              {new Date(gig.date).toLocaleDateString("en-US", {
-                weekday: "long", month: "long", day: "numeric", year: "numeric",
-              })}
+              {formatShowDate(new Date(gig.date))}
             </div>
           </div>
           <div>
@@ -101,7 +100,7 @@ export default async function GigDetailPage({ params }: { params: { id: string }
       </div>
 
       {/* Band: claim section */}
-      {session?.user.role === "BAND" && (gig.status === "OPEN" || hasPendingClaim) && (
+      {session?.user.role === "BAND" && (gig.status === "OPEN" || gig.status === "PENDING" || hasPendingClaim) && (
         <div className="card mb-6">
           <h2 className="font-semibold mb-3">Claim this gig</h2>
           {hasPendingClaim ? (
